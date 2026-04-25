@@ -2,16 +2,18 @@
 
 [![CI](https://github.com/winoooops/llm-tui/workflows/CI/badge.svg)](https://github.com/winoooops/llm-tui/actions)
 
-A terminal chat interface for local LLMs, built with Rust and [Ratatui](https://github.com/ratatui/ratatui).
+A **full-functional coding agent TUI** powered by local LLMs. Built with Rust and [Ratatui](https://github.com/ratatui/ratatui).
 
-> This project started as a learning journey into Rust and terminal UI development. The codebase is intentionally documented with step-by-step tutorials for anyone who wants to build something similar.
+> **Status:** Early development. Currently a working chat interface with streaming LLM responses. The long-term goal is a terminal-based coding assistant that can read your project, discuss code, and help you write — all running locally on your own hardware.
+>
+> This project is also a **documented learning journey** into Rust and terminal UI development. Every major feature is accompanied by a step-by-step tutorial.
 
 ---
 
 ## Features
 
 - **Streamed responses** — See the LLM reply token-by-token in real time
-- **Local-first** — Talks to your own hardware, no API keys or cloud required
+- **Local-first** — Talks to your own hardware; no API keys or cloud required
 - **Async architecture** — Built on Tokio; UI stays responsive while the model thinks
 - **Component-based UI** — Easy to extend with new panels and features
 
@@ -26,37 +28,25 @@ A terminal chat interface for local LLMs, built with Rust and [Ratatui](https://
 | Error Handling | color-eyre |
 | Configuration | config crate + json5 |
 
-## Requirements
-
-- Rust toolchain (nightly recommended for `cargo fmt` and `cargo clippy`)
-- A local LLM server with an **OpenAI-compatible API**
-  - Tested with [llama.cpp server](https://github.com/ggerganov/llama.cpp/blob/master/examples/server/README.md)
-  - Should also work with Ollama, vLLM, etc.
-
 ## Quick Start
 
-### 1. Start your local LLM server
-
-Example with llama.cpp:
-
 ```bash
+# 1. Clone
+git clone https://github.com/winoooops/llm-tui.git
+cd llm-tui
+
+# 2. Start your local LLM server (OpenAI-compatible API)
+#    Example with llama.cpp:
 ./server -m your-model.gguf --port 8080
-```
 
-Make sure it exposes the `/v1/chat/completions` endpoint.
-
-### 2. Build and run
-
-```bash
+# 3. Build and run
 cargo build --release
 cargo run
 ```
 
-### 3. Chat
+Then type your message and press **Enter** to chat. Press **Esc** to quit.
 
-- Type your message and press **Enter** to send
-- Watch the response stream in live
-- Press **Esc** or **Ctrl-C** to quit
+> **Note:** Screenshots and demo recordings will be added soon.
 
 ### Local development environment
 
@@ -82,18 +72,15 @@ The entire project was built incrementally, and each step is documented as a tut
 
 There's also a [study notes](docs/notes/rust-ratatui-study-notes.md) doc covering Rust ownership, references, `Option`/`Result`, and Ratatui's immediate-mode rendering model.
 
-## Project Status
+## Roadmap
 
-This is a **work in progress**. Current capabilities:
-
-- [x] Basic chat UI (input + scrollable history)
-- [x] Connect to local LLM via OpenAI-compatible API
-- [x] Streamed response rendering
-- [x] Async architecture with Tokio channels
-- [ ] Chat history / conversation context
-- [ ] Multi-panel layout (file tree + chat)
-- [ ] Code syntax highlighting in responses
-- [ ] Multiple model support
+| Phase | Goal | Status |
+|-------|------|--------|
+| **Phase 1: Chat** | Basic chat UI with streaming LLM responses | ✅ Done |
+| **Phase 2: Context** | Conversation history, multi-turn dialogue | 🔄 Next |
+| **Phase 3: Workspace** | File tree panel, read project files into context | 📋 Planned |
+| **Phase 4: Code** | Syntax highlighting, diff view, code block extraction | 📋 Planned |
+| **Phase 5: Agent** | Tool use (file read/write, shell commands), agent loop | 📋 Planned |
 
 ## Architecture
 
@@ -119,6 +106,13 @@ This is a **work in progress**. Current capabilities:
 ```
 
 All state changes flow through the `Action` enum. Components communicate with `App` via async channels (`tokio::sync::mpsc`).
+
+## Requirements
+
+- Rust toolchain (nightly recommended for `cargo fmt` and `cargo clippy`)
+- A local LLM server with an **OpenAI-compatible API**
+  - Tested with [llama.cpp server](https://github.com/ggerganov/llama.cpp/blob/master/examples/server/README.md)
+  - Should also work with Ollama, vLLM, etc.
 
 ## License
 
