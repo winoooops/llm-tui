@@ -1,0 +1,25 @@
+# Coding Agent TUI 文档
+
+用 Rust + Ratatui 构建 Coding Agent 终端界面的学习记录。
+
+---
+
+## 教程
+
+按顺序阅读，每一步都依赖前一步。
+
+| 编号 | 内容 | 产出 |
+|------|------|------|
+| [Tutorial 01](tutorials/01-chat-component.md) | 第一个 Chat 组件 | 本地输入 + 显示的聊天界面 |
+| [Tutorial 02a](tutorials/02a-llm-preparation.md) | 准备 LLM 集成 | 添加 reqwest，扩展 Action 枚举 |
+| [Tutorial 02b](tutorials/02b-send-message.md) | Chat 发送消息 | 按 Enter 发送 Action::SendMessage |
+| [Tutorial 02c](tutorials/02c-streaming-llm.md) | App 调用 LLM | 异步 HTTP + SSE 流式解析 |
+| [Tutorial 02d](tutorials/02d-display-response.md) | 显示回复并测试 | Chat 实时渲染 LLM 流式输出 |
+
+## 速记卡
+
+- [Rust + Ratatui 核心概念](notes/rust-ratatui-study-notes.md) — 编译期/运行时、引用、Option/Result、所有权、Ratatui 渲染模型等
+
+## 待完成
+
+- Tutorial 03：多面板布局（文件树 + 聊天）
