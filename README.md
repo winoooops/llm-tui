@@ -81,6 +81,7 @@ There's also a [study notes](docs/notes/rust-ratatui-study-notes.md) doc coverin
 | **Phase 3: Workspace** | File tree panel, read project files into context | 📋 Planned |
 | **Phase 4: Code** | Syntax highlighting, diff view, code block extraction | 📋 Planned |
 | **Phase 5: Agent** | Tool use (file read/write, shell commands), agent loop | 📋 Planned |
+| **Phase 6: Harness** | Deploy, package, and harness into daily workflow | 📋 Planned |
 
 ## Architecture
 
