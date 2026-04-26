@@ -64,6 +64,7 @@ The entire project was built incrementally, and each step is documented as a tut
 
 | Tutorial | What You Build |
 |----------|----------------|
+| [00 — Local LLM Preparation](docs/tutorials/00-local-llm-preparation.md) | Install and run llama.cpp server |
 | [01 — Chat Component](docs/tutorials/01-chat-component.md) | A local input + display chat UI |
 | [02a — LLM Preparation](docs/tutorials/02a-llm-preparation.md) | Add HTTP client and Action types |
 | [02b — Send Message](docs/tutorials/02b-send-message.md) | Wire Chat to emit `Action::SendMessage` |

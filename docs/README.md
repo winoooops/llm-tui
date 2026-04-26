@@ -10,6 +10,7 @@
 
 | 编号 | 内容 | 产出 |
 |------|------|------|
+| [Tutorial 00](tutorials/00-local-llm-preparation.md) | 本地 LLM 环境准备 | 安装并运行 llama.cpp server |
 | [Tutorial 01](tutorials/01-chat-component.md) | 第一个 Chat 组件 | 本地输入 + 显示的聊天界面 |
 | [Tutorial 02a](tutorials/02a-llm-preparation.md) | 准备 LLM 集成 | 添加 reqwest，扩展 Action 枚举 |
 | [Tutorial 02b](tutorials/02b-send-message.md) | Chat 发送消息 | 按 Enter 发送 Action::SendMessage |
