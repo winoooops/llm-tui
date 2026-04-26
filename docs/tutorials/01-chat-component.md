@@ -116,6 +116,9 @@ impl Chat {
 - `Vec::new()` 创建空数组
 - `String::new()` 创建空字符串
 
+> **为什么 `impl Chat` 和 `impl Component for Chat` 要分开写？**  
+> `impl Chat` 是 Chat **自己特有的**方法（比如 `new()`）；`impl Component for Chat` 是 Chat **满足外部契约**的方法（比如 `draw()`）。分开写职责清晰，一个类型也可以实现多个 trait。详见 [impl 块拆分笔记](../notes/impl-blocks.md)。
+
 ---
 
 ### A5. 实现 Component trait
