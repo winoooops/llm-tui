@@ -85,3 +85,72 @@ fn update(&mut self, action: Action) -> color_eyre::Result<Option<Action>> {
 ---
 
 *跑通后告诉我，我们进入 Step C：多面板布局。*
+
+
+---
+
+### Bonus：把 Spinner 提取到 `utils.rs`
+
+现在 spinner 字符是硬编码在 `chat.rs` 里的。如果以后多个组件都要用加载动画，应该把它集中管理。
+
+#### 1. 创建 `src/utils.rs`
+
+```rust
+//! Shared utilities: spinners, helpers, etc.
+
+/// Classic Braille spinner — smooth on all terminals
+pub const SPINNER_BRAILLE: &[&str] = &[
+    "⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏",
+];
+
+/// Simple ASCII fallback
+pub const SPINNER_ASCII: &[&str] = &["-", "\\", "|", "/"];
+
+/// Pick a frame from a spinner using a tick counter
+pub fn spinner_frame(spinner: &[&str], tick: usize) -> &str {
+    spinner[tick % spinner.len()]
+}
+```
+
+#### 2. 注册模块
+
+在 `src/main.rs` 的 `mod` 列表里加上：
+
+```rust
+mod utils;
+```
+
+#### 3. 在 `chat.rs` 里使用
+
+顶部导入：
+
+```rust
+use crate::utils;
+```
+
+替换 `draw` 里的 hardcoded spinner：
+
+```rust
+// 之前：
+// let spinner = ["⠋", "⠙", ...];
+// let idx = (self.tick_count as usize) % spinner.len();
+
+// 之后：
+let frame = utils::spinner_frame(
+    utils::SPINNER_BRAILLE,
+    self.tick_count as usize,
+);
+lines.push(Line::from(format!("AI: {} thinking...", frame)));
+```
+
+**为什么值得做这个小重构？**
+
+| 好处 | 说明 |
+|------|------|
+| 单一真相源 | 所有组件共用同一套 spinner 定义 |
+| 易替换 | 换个动画风格只改 `utils.rs` 一行 |
+| 可扩展 | 以后加 `truncate()`、`format_tokens()` 都有地方放 |
+
+---
+
+*跑通后告诉我，我们进入 Step C：多面板布局。*
