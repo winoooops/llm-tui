@@ -71,7 +71,7 @@ The entire project was built incrementally, and each step is documented as a tut
 | [02c — Streaming LLM](docs/tutorials/02c-streaming-llm.md) | Async HTTP request + SSE parsing |
 | [02d — Display Response](docs/tutorials/02d-display-response.md) | Render streaming LLM output |
 
-There's also a [study notes](docs/notes/rust-ratatui-study-notes.md) doc covering Rust ownership, references, `Option`/`Result`, and Ratatui's immediate-mode rendering model.
+There's also a [collection of concept notes](docs/notes/README.md) covering ownership, traits, `self` vs `this`, and `async move`.
 
 ## Roadmap
 
