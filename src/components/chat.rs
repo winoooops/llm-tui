@@ -155,6 +155,8 @@ impl Component for Chat {
                     }),
             )
             .wrap(Wrap { trim: true });
+
+        // 4. render the widget to the view
         frame.render_widget(input_widget, input_area);
 
         Ok(())
