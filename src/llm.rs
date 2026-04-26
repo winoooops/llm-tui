@@ -4,7 +4,10 @@ use tokio::sync::mpsc::UnboundedSender;
 
 const LLM_API_URL: &str = "http://127.0.0.1:8080/v1/chat/completions";
 
-pub async fn stream_chat(messages: Vec<Message>, tx: UnboundedSender<Action>) -> color_eyre::Result<()> {
+pub async fn stream_chat(
+    messages: Vec<Message>,
+    tx: UnboundedSender<Action>,
+) -> color_eyre::Result<()> {
     let client = reqwest::Client::new();
 
     let api_messages: Vec<_> = messages

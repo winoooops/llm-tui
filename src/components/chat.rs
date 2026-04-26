@@ -1,5 +1,5 @@
-use crate::utils;
 use crate::message::Message;
+use crate::utils;
 use crossterm::event::{KeyCode, KeyEvent};
 
 use ratatui::{
@@ -17,9 +17,9 @@ use crate::action::Action;
 
 pub struct Chat {
     command_tx: Option<UnboundedSender<Action>>,
-    messages: Vec<String>,                       // the message history user sees
-    conversation: Vec<Message>,                  // the message history llm api sees
-    current_ai_response: String,                 // the temporary llm response text, will be removed
+    messages: Vec<String>,       // the message history user sees
+    conversation: Vec<Message>,  // the message history llm api sees
+    current_ai_response: String, // the temporary llm response text, will be removed
     input: String,
     focused: bool,
     waiting_for_response: bool,
@@ -118,11 +118,10 @@ impl Component for Chat {
                 self.current_ai_response.push_str(&chunk);
                 self.append_ai_text(&chunk);
             }
-            Action::StreamEnd => {
-                if !self.current_ai_response.is_empty() {
-                    self.conversation.push(Message::assistant(&self.current_ai_response));
-                    self.current_ai_response.clear();
-                }
+            Action::StreamEnd if !self.current_ai_response.is_empty() => {
+                self.conversation
+                    .push(Message::assistant(&self.current_ai_response));
+                self.current_ai_response.clear();
             }
             _ => {}
         }

@@ -11,9 +11,9 @@ mod config;
 mod errors;
 mod llm;
 mod logging;
+mod message;
 mod tui;
 mod utils;
-mod message;
 
 #[tokio::main]
 async fn main() -> color_eyre::Result<()> {
