@@ -13,6 +13,7 @@ mod llm;
 mod logging;
 mod tui;
 mod utils;
+mod message;
 
 #[tokio::main]
 async fn main() -> color_eyre::Result<()> {

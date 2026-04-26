@@ -1,17 +1,20 @@
-use crate::action::Action;
+use crate::{action::Action, message::Message};
 use futures::StreamExt;
 use tokio::sync::mpsc::UnboundedSender;
 
 const LLM_API_URL: &str = "http://127.0.0.1:8080/v1/chat/completions";
 
-pub async fn stream_chat(prompt: String, tx: UnboundedSender<Action>) -> color_eyre::Result<()> {
+pub async fn stream_chat(messages: Vec<Message>, tx: UnboundedSender<Action>) -> color_eyre::Result<()> {
     let client = reqwest::Client::new();
+
+    let api_messages: Vec<_> = messages
+        .iter()
+        .map(|m| serde_json::json!({"role": &m.role, "content": &m.content}))
+        .collect();
 
     let body = serde_json::json!({
         "model": "gemma-4-31b",
-        "messages": [
-            {"role": "user", "content": prompt}
-        ],
+        "messages": api_messages,
         "stream": true
     });
 
@@ -30,6 +33,7 @@ pub async fn stream_chat(prompt: String, tx: UnboundedSender<Action>) -> color_e
             if let Some(data) = line.strip_prefix("data: ") {
                 let data = data.trim();
                 if data == "[DONE]" {
+                    let _ = tx.send(Action::StreamEnd);
                     return Ok(());
                 }
 
@@ -42,5 +46,6 @@ pub async fn stream_chat(prompt: String, tx: UnboundedSender<Action>) -> color_e
         }
     }
 
+    let _ = tx.send(Action::StreamEnd);
     Ok(())
 }

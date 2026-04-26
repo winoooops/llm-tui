@@ -1,4 +1,5 @@
 use crate::utils;
+use crate::message::Message;
 use crossterm::event::{KeyCode, KeyEvent};
 
 use ratatui::{
@@ -16,7 +17,9 @@ use crate::action::Action;
 
 pub struct Chat {
     command_tx: Option<UnboundedSender<Action>>,
-    messages: Vec<String>,
+    messages: Vec<String>,                       // the message history user sees
+    conversation: Vec<Message>,                  // the message history llm api sees
+    current_ai_response: String,                 // the temporary llm response text, will be removed
     input: String,
     focused: bool,
     waiting_for_response: bool,
@@ -28,6 +31,8 @@ impl Chat {
         Self {
             command_tx: None,
             messages: Vec::new(),
+            conversation: Vec::new(),
+            current_ai_response: String::new(),
             input: String::new(),
             focused: true,
             waiting_for_response: false,
@@ -69,12 +74,18 @@ impl Component for Chat {
             KeyCode::Enter => {
                 if !self.input.is_empty() {
                     let text = self.input.clone();
+                    // 1. show in the chat history ui
                     self.messages.push(format!("You: {}", text));
+
+                    // 2. save to conversation
+                    self.conversation.push(Message::user(&text));
+
+                    // 3. do the cleanup
                     self.input.clear();
                     self.start_waiting();
 
                     if let Some(ref tx) = self.command_tx {
-                        let _ = tx.send(Action::SendMessage(text));
+                        let _ = tx.send(Action::SendMessage(self.conversation.clone()));
                     }
                 }
                 Ok(None)
@@ -104,7 +115,14 @@ impl Component for Chat {
             }
             Action::ReceiveChunk(chunk) => {
                 self.stop_waiting();
+                self.current_ai_response.push_str(&chunk);
                 self.append_ai_text(&chunk);
+            }
+            Action::StreamEnd => {
+                if !self.current_ai_response.is_empty() {
+                    self.conversation.push(Message::assistant(&self.current_ai_response));
+                    self.current_ai_response.clear();
+                }
             }
             _ => {}
         }
@@ -134,7 +152,6 @@ impl Component for Chat {
                 "AI: {} thinking",
                 utils::spinner_frame(self.tick_count as usize)
             )));
-            lines.push(Line::from("AI: ▋"));
         }
 
         let messages_widget = Paragraph::new(Text::from(lines))

@@ -16,6 +16,7 @@
 | [Tutorial 02b](tutorials/02b-send-message.md) | Chat 发送消息 | 按 Enter 发送 Action::SendMessage |
 | [Tutorial 02c](tutorials/02c-streaming-llm.md) | App 调用 LLM | 异步 HTTP + SSE 流式解析 |
 | [Tutorial 02d](tutorials/02d-display-response.md) | 显示回复并测试 | Chat 实时渲染 LLM 流式输出 |
+| [Tutorial 03](tutorials/03-memory-context.md) | 给 Chat 添加记忆 | LLM 记住多轮对话上下文 |
 
 ## 速记卡与概念笔记
 

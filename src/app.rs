@@ -149,11 +149,11 @@ impl App {
                 Action::ClearScreen => tui.terminal.clear()?,
                 Action::Resize(w, h) => self.handle_resize(tui, w, h)?,
                 Action::Render => self.render(tui)?,
-                Action::SendMessage(ref prompt) => {
+                Action::SendMessage(ref history) => {
                     let tx = self.action_tx.clone();
-                    let prompt = prompt.clone();
+                    let history = history.clone();
                     tokio::spawn(async move {
-                        if let Err(e) = llm::stream_chat(prompt, tx).await {
+                        if let Err(e) = llm::stream_chat(history, tx).await {
                             tracing::error!("LLM error: {}", e);
                         }
                     });
