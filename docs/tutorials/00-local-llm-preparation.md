@@ -1,6 +1,6 @@
 # Tutorial 00：本地 LLM 环境准备
 
-> **目标**：安装并运行 llama.cpp server，让它暴露 OpenAI-compatible API，供 `llm-tui` 连接。  
+> **目标**：安装并运行 llama.cpp server，让它暴露 OpenAI-compatible API，供 `llm-tui` 连接。
 > **前置要求**：一台能跑 LLM 的电脑（GPU 推荐，CPU 也行）。
 
 ---
@@ -138,7 +138,6 @@ curl http://127.0.0.1:8080/v1/chat/completions \
 
 ---
 
-## 下一步
 
 Server 跑起来后，打开另一个终端：
 
@@ -151,4 +150,3 @@ cargo run
 
 ---
 
-*下一步：[Tutorial 01](01-chat-component.md) — 构建第一个 Chat 组件。*

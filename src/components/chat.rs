@@ -1,9 +1,10 @@
 use crossterm::event::{KeyCode, KeyEvent};
+use crate::utils;
 
 use ratatui::{
     Frame,
     layout::{Constraint, Direction, Layout, Rect},
-    style::{Style, Color},
+    style::{Color, Style},
     text::{Line, Text},
     widgets::{Block, Borders, Paragraph, Wrap},
 };
@@ -30,7 +31,7 @@ impl Chat {
             input: String::new(),
             focused: true,
             waiting_for_response: false,
-            tick_count: 0
+            tick_count: 0,
         }
     }
 
@@ -100,11 +101,11 @@ impl Component for Chat {
         match action {
             Action::Tick => {
                 self.tick_count = self.tick_count.wrapping_add(1);
-            },
+            }
             Action::ReceiveChunk(chunk) => {
                 self.stop_waiting();
                 self.append_ai_text(&chunk);
-            },
+            }
             _ => {}
         }
 
@@ -129,9 +130,8 @@ impl Component for Chat {
             .collect();
 
         if self.is_waiting() {
-            let spinner = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
-            let idx = (self.tick_count as usize) % spinner.len();
-            lines.push(Line::from(format!("AI: {} thinking", spinner[idx])));
+            lines.push(Line::from(format!("AI: {} thinking", utils::spinner_frame(self.tick_count as usize))));
+            lines.push(Line::from("AI: ▋"));
         }
 
         let messages_widget = Paragraph::new(Text::from(lines))
@@ -145,12 +145,11 @@ impl Component for Chat {
                 Block::default()
                     .title("Input (Enter to send, Esc to quit)")
                     .borders(Borders::ALL)
-                    .border_style(
-                        if self.focused {
-                            Style::default().fg(Color::Yellow)
-                        } else {
-                            Style::default()
-                        })
+                    .border_style(if self.focused {
+                        Style::default().fg(Color::Yellow)
+                    } else {
+                        Style::default()
+                    }),
             )
             .wrap(Wrap { trim: true });
         frame.render_widget(input_widget, input_area);

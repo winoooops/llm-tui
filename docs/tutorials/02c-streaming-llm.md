@@ -208,4 +208,3 @@ if let Ok(v) = serde_json::from_str::<serde_json::Value>(data) {
 
 ---
 
-*下一步：[Tutorial 02d](02d-display-response.md) — 显示 LLM 回复并测试。*

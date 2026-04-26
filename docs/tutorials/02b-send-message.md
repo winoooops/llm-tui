@@ -41,4 +41,3 @@ Rust 的所有权规则：`self.input.clear()` 会修改 `self.input`，但 `tx.
 
 ---
 
-*下一步：[Tutorial 02c](02c-streaming-llm.md) — App 调用 LLM API（流式）。*

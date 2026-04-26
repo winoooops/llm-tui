@@ -1,6 +1,6 @@
 # Tutorial 02d：显示 LLM 回复并测试
 
-> **目标**：Chat 组件处理 `ReceiveChunk`，实时显示流式回复。  
+> **目标**：Chat 组件处理 `ReceiveChunk`，实时显示流式回复。
 > **前置要求**：已完成 [Tutorial 02c](02c-streaming-llm.md)。
 
 ---
@@ -82,10 +82,6 @@ fn update(&mut self, action: Action) -> color_eyre::Result<Option<Action>> {
 4. **`serde_json::Value` 和定义结构体相比有什么优缺点？**
 5. **`.last_mut()` 和 `.last()` 有什么区别？**
 
----
-
-*跑通后告诉我，我们进入 Step C：多面板布局。*
-
 
 ---
 
@@ -153,4 +149,3 @@ lines.push(Line::from(format!("AI: {} thinking...", frame)));
 
 ---
 
-*跑通后告诉我，我们进入 Step C：多面板布局。*

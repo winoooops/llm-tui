@@ -21,6 +21,4 @@
 
 - [Rust + Ratatui 核心概念](notes/rust-ratatui-study-notes.md) — 编译期/运行时、引用、Option/Result、所有权、Ratatui 渲染模型等
 
-## 待完成
 
-- Tutorial 03：多面板布局（文件树 + 聊天）
