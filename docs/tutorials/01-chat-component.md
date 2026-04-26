@@ -381,6 +381,84 @@ cargo run
 
 ---
 
+### A7b. 加餐：`color_eyre::Result<()>` 和 `Ok(())` 是什么？
+
+你在教程里频繁看到这样的返回类型：
+
+```rust
+fn register_action_handler(&mut self, tx: UnboundedSender<Action>) -> color_eyre::Result<()> {
+    self.command_tx = Some(tx);
+    Ok(())
+}
+```
+
+#### `color_eyre::Result<T>` 是什么？
+
+`color_eyre` 是一个 Rust 错误处理库。它给标准库的 `Result` 做了一层包装：
+
+```rust
+// color_eyre 定义的类型别名：
+type Result<T> = std::result::Result<T, color_eyre::Report>;
+```
+
+也就是说，`color_eyre::Result<()>` **就是** `Result<(), color_eyre::Report>`。
+
+**为什么用它而不是普通的 `Result`？**
+
+| 特性 | `std::result::Result<T, E>` | `color_eyre::Result<T>` |
+|------|---------------------------|------------------------|
+| 错误类型 | 你必须指定一种 `E` | 统一的 `Report`，任何错误都能装进去 |
+| 错误显示 | 默认 `Debug` 输出 | 带颜色、带上下文、带完整 backtrace |
+| `?` 自动转换 | 需要实现 `From<E>` | **任何错误都能直接用 `?`**，无需额外转换 |
+
+**简单比喻：**
+
+- 普通 `Result<T, E>` 像是一个"只能装苹果的错误篮子"
+- `color_eyre::Result<T>` 像是一个"万能错误篮子"，苹果、橘子、香蕉（任何错误）都能丢进去，而且打印出来时还会自动标红高亮
+
+#### `Ok(())` 是什么意思？
+
+Rust 里 `()` 读作 **unit**（单元类型），表示"什么都没有"。它类似于其他语言的 `void`，但 `()` 是一个**真正的类型和值**。
+
+```rust
+fn do_something() -> color_eyre::Result<()> {
+    // 做一堆事情...
+    Ok(())   // "成功完成，但没有什么要返回的"
+}
+```
+
+| 写法 | 含义 |
+|------|------|
+| `Ok(())` | 成功，返回值是 unit（空） |
+| `Ok(value)` | 成功，返回值是 `value` |
+| `Err(e)` | 失败，返回错误 `e` |
+
+**为什么末尾必须写 `Ok(())`？**
+
+因为函数签名承诺了返回 `color_eyre::Result<()>`。Rust 是表达式语言，函数体最后一个表达式的值就是返回值。如果你不写 `Ok(())`，函数就没有返回值，编译器会报错：
+
+```
+error[E0308]: mismatched types
+  --> expected enum `Result`, found `()`
+```
+
+#### `?` 运算符的魔法
+
+`color_eyre` 最方便的地方是配合 `?` 使用：
+
+```rust
+fn some_function() -> color_eyre::Result<()> {
+    let file = std::fs::read_to_string("config.json")?;  // 如果失败，自动返回 Err
+    let config = serde_json::from_str(&file)?;            // 如果失败，自动返回 Err
+    // ...
+    Ok(())
+}
+```
+
+无论 `read_to_string` 返回 `std::io::Error`，还是 `from_str` 返回 `serde_json::Error`，`?` 都会**自动把它们转换成 `color_eyre::Report`** 然后返回。你不用写任何 `.map_err()`。
+
+---
+
 ## Step A 概念检查清单
 
 进入 Step B 之前，确认你能回答这些问题：
