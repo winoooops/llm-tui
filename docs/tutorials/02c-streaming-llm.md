@@ -51,6 +51,8 @@ Action::SendMessage(prompt) => {
 
 Rust 默认会尝试**借用**外部变量。但 `tokio::spawn` 创建的任务可能比当前函数活得更久，所以借用会失效。`move` 关键字强制把 `tx` 和 `prompt` **所有权转移**进闭包，这样闭包自己拥有它们，不依赖外部。
 
+> 详见 [`async move` 详解笔记](../notes/async-move.md)。
+
 ### 4c. 添加 `call_llm` 函数
 
 在 `app.rs` 的最底部（`impl App` 块外面），加这个异步函数：
