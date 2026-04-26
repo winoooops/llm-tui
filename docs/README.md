@@ -17,8 +17,8 @@
 | [Tutorial 02c](tutorials/02c-streaming-llm.md) | App 调用 LLM | 异步 HTTP + SSE 流式解析 |
 | [Tutorial 02d](tutorials/02d-display-response.md) | 显示回复并测试 | Chat 实时渲染 LLM 流式输出 |
 
-## 速记卡
+## 速记卡与概念笔记
 
-- [Rust + Ratatui 核心概念](notes/rust-ratatui-study-notes.md) — 编译期/运行时、引用、Option/Result、所有权、Ratatui 渲染模型等
+- [笔记索引](notes/README.md) — 所有权、trait、`self` vs `this`、impl 块拆分等
 
 
