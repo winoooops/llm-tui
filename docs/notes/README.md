@@ -8,7 +8,7 @@
 
 | 笔记 | 回答的问题 |
 |------|-----------|
-| [Rust + Ratatui 核心概念](rust-ratatui-study-notes.md) | `let`/`const`、`&`/`&mut`、所有权、`Option`/`Result`、`Vec`、Ratatui 渲染模型 |
+| [所有权](ownership.md) | Owned / Borrowed / Move、`&`/`&mut`、借用检查器、Copy vs Clone |
 | [Trait 是什么？](what-is-trait.md) | Trait 的定义、为什么需要它、和 Java interface 的区别 |
 | [`self` vs `this`](self-vs-this.md) | Rust `self` 参数和 JS/Java `this` 的根本区别 |
 | [impl 块拆分](impl-blocks.md) | 为什么 `impl Type` 和 `impl Trait for Type` 要分开写 |
