@@ -129,6 +129,9 @@ impl Component for Chat {
 
 这行代码的意思是："Chat 满足 Component 契约"。接下来你必须提供 trait 要求的方法。
 
+> **Trait 是什么？**  
+> Trait 是 Rust 的"能力契约"。它规定："如果你声称自己具备某种能力，就必须提供对应的方法。"App 用 `Vec<Box<dyn Component>>` 统一管理所有组件，正是因为它们都满足 `Component` trait。详见 [Trait 详解](../notes/what-is-trait.md)。
+
 #### A5a. `register_action_handler`
 
 ```rust
