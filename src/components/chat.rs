@@ -1,5 +1,5 @@
-use crossterm::event::{KeyCode, KeyEvent};
 use crate::utils;
+use crossterm::event::{KeyCode, KeyEvent};
 
 use ratatui::{
     Frame,
@@ -48,11 +48,11 @@ impl Chat {
     }
 
     fn append_ai_text(&mut self, text: &str) {
-        if let Some(last) = self.messages.last_mut() {
-            if last.starts_with("AI: ") {
-                last.push_str(text);
-                return;
-            }
+        if let Some(last) = self.messages.last_mut()
+            && last.starts_with("AI: ")
+        {
+            last.push_str(text);
+            return;
         }
         self.messages.push(format!("AI: {}", text));
     }
@@ -130,7 +130,10 @@ impl Component for Chat {
             .collect();
 
         if self.is_waiting() {
-            lines.push(Line::from(format!("AI: {} thinking", utils::spinner_frame(self.tick_count as usize))));
+            lines.push(Line::from(format!(
+                "AI: {} thinking",
+                utils::spinner_frame(self.tick_count as usize)
+            )));
             lines.push(Line::from("AI: ▋"));
         }
 

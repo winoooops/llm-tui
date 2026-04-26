@@ -9,9 +9,9 @@ mod cli;
 mod components;
 mod config;
 mod errors;
+mod llm;
 mod logging;
 mod tui;
-mod llm;
 mod utils;
 
 #[tokio::main]

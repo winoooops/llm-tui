@@ -4,13 +4,13 @@ use serde::{Deserialize, Serialize};
 use tokio::sync::mpsc;
 use tracing::{debug, info};
 
+use crate::llm;
 use crate::{
     action::Action,
     components::{Component, chat::Chat, fps::FpsCounter, home::Home},
     config::Config,
     tui::{Event, Tui},
 };
-use crate::llm;
 
 pub struct App {
     config: Config,
@@ -31,15 +31,17 @@ pub enum Mode {
     Home,
 }
 
-
 impl App {
-
     pub fn new(tick_rate: f64, frame_rate: f64) -> color_eyre::Result<Self> {
         let (action_tx, action_rx) = mpsc::unbounded_channel();
         Ok(Self {
             tick_rate,
             frame_rate,
-            components: vec![Box::new(Home::new()), Box::new(FpsCounter::default()), Box::new(Chat::new())],
+            components: vec![
+                Box::new(Home::new()),
+                Box::new(FpsCounter::default()),
+                Box::new(Chat::new()),
+            ],
             should_quit: false,
             should_suspend: false,
             config: Config::new()?,
@@ -155,7 +157,7 @@ impl App {
                             tracing::error!("LLM error: {}", e);
                         }
                     });
-                },
+                }
                 _ => {}
             }
             for component in self.components.iter_mut() {

@@ -12,6 +12,6 @@ pub enum Action {
     ClearScreen,
     Error(String),
     Help,
-    SendMessage(String),   // user sends prompt
-    ReceiveChunk(String),  // agents responds in stream
+    SendMessage(String),  // user sends prompt
+    ReceiveChunk(String), // agents responds in stream
 }
