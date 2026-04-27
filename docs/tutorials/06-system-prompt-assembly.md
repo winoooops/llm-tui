@@ -74,7 +74,7 @@ __SYSTEM_PROMPT_DYNAMIC_BOUNDARY__
 在 `impl Message` 里加一条构造器：
 
 ```rust
-pub fn system(content: impl Into<String>) -> Self {
+pub fn system(content: impl Into<String>) -> Self {  // → 见笔记 [`Into<T>`](../notes/into-trait.md)
     Self {
         role: "system".into(),
         content: content.into(),
@@ -144,7 +144,7 @@ impl PromptContext {
     pub fn from_environment() -> Self {
         let cwd = std::env::current_dir()
             .map(|p| p.display().to_string())
-            .unwrap_or_else(|_| ".".into());
+            .unwrap_or_else(|_| ".".into());  // → 见笔记 [`Result::map + unwrap_or_else`](../notes/result-map-unwrap.md)
 
         let project_name = read_cargo_name()
             .or_else(|| Path::new(&cwd).file_name().and_then(|s| s.to_str()).map(String::from))
