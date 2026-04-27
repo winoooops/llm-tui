@@ -1,12 +1,12 @@
 use crate::message::Message;
 use crate::utils;
-use crossterm::event::{KeyCode, KeyEvent};
+use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
 use ratatui::{
     Frame,
     layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Style},
-    text::{Line, Text},
+    text::{Line, Span, Text},
     widgets::{Block, Borders, Paragraph, Wrap},
 };
 
@@ -24,6 +24,7 @@ pub struct Chat {
     focused: bool,
     waiting_for_response: bool,
     tick_count: u8,
+    cursor_position: usize, // the cursor position
 }
 
 impl Chat {
@@ -37,6 +38,7 @@ impl Chat {
             focused: true,
             waiting_for_response: false,
             tick_count: 0,
+            cursor_position: 0,
         }
     }
 
@@ -61,6 +63,98 @@ impl Chat {
         }
         self.messages.push(format!("AI: {}", text));
     }
+
+    fn move_cursor_left(&mut self) {
+        let before = &self.input[..self.cursor_position];
+        if let Some((idx, _)) = before.char_indices().last() {
+            self.cursor_position = idx;
+        }
+    }
+
+    fn move_cursor_right(&mut self) {
+        let after = &self.input[self.cursor_position..];
+        if let Some((idx, c)) = after.char_indices().next() {
+            // although idx is alwasy 0,
+            // it's better to understand if we do it like idx + c.len_utf8()
+            // which means the cursor will jump the end of next character(utf-8 or not)
+            self.cursor_position += idx + c.len_utf8();
+        }
+    }
+
+    fn enter_char(&mut self, c: char) {
+        // insert the character
+        self.input.insert(self.cursor_position, c);
+        // move the cursor to the right by one length of the character
+        self.cursor_position += c.len_utf8();
+    }
+
+    fn delete_char(&mut self) {
+        let before = &self.input[..self.cursor_position];
+        if let Some((idx, c)) = before.char_indices().last() {
+            // remove the character
+            self.input.remove(idx);
+            // move the cursor to the right by one character length
+            self.cursor_position -= c.len_utf8();
+        }
+    }
+
+    fn enter_newline(&mut self) {
+        self.input.insert(self.cursor_position, '\n');
+        self.cursor_position += 1;
+    }
+
+    fn build_input_text(&self) -> Text<'static> {
+        if !self.focused {
+            return Text::from(self.input.clone());
+        }
+
+        let cursor_style = Style::default().bg(Color::Yellow).fg(Color::Black);
+        let block_style = Style::default().fg(Color::Yellow);
+
+        // 1. 计算光标在第几行、第几列（按字符计）
+        let text_before = &self.input[..self.cursor_position];
+        let cursor_line = text_before.chars().filter(|&c| c == '\n').count();
+        let line_start = text_before.rfind('\n').map(|n| n + 1).unwrap_or(0);
+        let cursor_col = self.input[line_start..self.cursor_position].chars().count();
+
+        // 2. split into multiple line by '\n'
+        let raw_lines: Vec<&str> = self.input.split('\n').collect();
+        let mut lines = Vec::new();
+
+        for (i, line) in raw_lines.iter().enumerate() {
+            if i == cursor_line {
+                let chars: Vec<char> = line.chars().collect();
+                if cursor_col < chars.len() {
+                    // 光标在某个字符上：把它高亮
+                    let before: String = chars[..cursor_col].iter().collect();
+                    let c = chars[cursor_col];
+                    let after: String = chars[cursor_col + 1..].iter().collect();
+                    lines.push(Line::from(vec![
+                        Span::raw(before),
+                        Span::styled(c.to_string(), cursor_style),
+                        Span::raw(after),
+                    ]));
+                } else {
+                    // 光标在行尾：追加一个闪烁块
+                    lines.push(Line::from(vec![
+                        Span::raw(line.to_string()),
+                        Span::styled("▋", block_style),
+                    ]));
+                }
+            } else {
+                lines.push(Line::from(line.to_string()));
+            }
+        }
+
+        // 3. 处理光标在末尾空行的情况（比如刚按了 Ctrl+J）
+        if self.input.is_empty()
+            || (self.input.ends_with('\n') && cursor_line >= raw_lines.len().saturating_sub(1))
+        {
+            lines.push(Line::from(Span::styled("▋", block_style)));
+        }
+
+        Text::from(lines)
+    }
 }
 
 impl Component for Chat {
@@ -74,14 +168,11 @@ impl Component for Chat {
             KeyCode::Enter => {
                 if !self.input.is_empty() {
                     let text = self.input.clone();
-                    // 1. show in the chat history ui
+
                     self.messages.push(format!("You: {}", text));
-
-                    // 2. save to conversation
                     self.conversation.push(Message::user(&text));
-
-                    // 3. do the cleanup
                     self.input.clear();
+                    self.cursor_position = 0; // reset the position
                     self.start_waiting();
 
                     if let Some(ref tx) = self.command_tx {
@@ -90,12 +181,24 @@ impl Component for Chat {
                 }
                 Ok(None)
             }
+            KeyCode::Char('j') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                self.enter_newline();
+                Ok(None)
+            }
+            KeyCode::Left => {
+                self.move_cursor_left();
+                Ok(None)
+            }
+            KeyCode::Right => {
+                self.move_cursor_right();
+                Ok(None)
+            }
             KeyCode::Backspace => {
-                self.input.pop();
+                self.delete_char();
                 Ok(None)
             }
             KeyCode::Char(c) => {
-                self.input.push(c);
+                self.enter_char(c);
                 Ok(None)
             }
             KeyCode::Esc => {
@@ -159,10 +262,10 @@ impl Component for Chat {
         frame.render_widget(messages_widget, messages_area);
 
         // 3. constrcut the input area controller
-        let input_widget = Paragraph::new(self.input.as_str())
+        let input_widget = Paragraph::new(self.build_input_text())
             .block(
                 Block::default()
-                    .title("Input (Enter to send, Esc to quit)")
+                    .title("Input (Enter=Send, Ctrl+J=newline, Esc=quit)")
                     .borders(Borders::ALL)
                     .border_style(if self.focused {
                         Style::default().fg(Color::Yellow)

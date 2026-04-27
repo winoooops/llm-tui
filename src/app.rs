@@ -1,4 +1,4 @@
-use crossterm::event::KeyEvent;
+use crossterm::event::{KeyCode, KeyEvent};
 use ratatui::prelude::Rect;
 use serde::{Deserialize, Serialize};
 use tokio::sync::mpsc;
@@ -110,6 +110,11 @@ impl App {
     }
 
     fn handle_key_event(&mut self, key: KeyEvent) -> color_eyre::Result<()> {
+        // normal key input will be handleed by input box
+        if matches!(key.code, KeyCode::Char(_)) && key.modifiers.is_empty() {
+            return Ok(());
+        };
+
         let action_tx = self.action_tx.clone();
         let Some(keymap) = self.config.keybindings.0.get(&self.mode) else {
             return Ok(());
