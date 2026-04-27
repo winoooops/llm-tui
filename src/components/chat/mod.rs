@@ -1,7 +1,7 @@
 use color_eyre::eyre::Ok;
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use ratatui::{
-    layout::{Constraint, Direction, Layout},
+    layout::{Constraint, Direction, Layout, Position},
     style::{Color, Style},
     widgets::{Block, Borders, Paragraph, Wrap},
 };
@@ -65,6 +65,14 @@ impl Component for Chat {
                 self.input.enter_new_line();
                 Ok(None)
             }
+            KeyCode::Char('h') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                self.input.move_cursor_left();
+                Ok(None)
+            }
+            KeyCode::Char('l') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                self.input.move_cursor_right();
+                Ok(None)
+            }
             KeyCode::Left => {
                 self.input.move_cursor_left();
                 Ok(None)
@@ -123,20 +131,28 @@ impl Component for Chat {
             .wrap(Wrap { trim: true });
         frame.render_widget(conversation_widget, chunks[0]);
 
-        let input_widget = Paragraph::new(self.input.render(self.focused))
+        let input_widget = Paragraph::new(self.input.render())
             .block(
                 Block::default()
-                    .title("Input (Enter=send, Ctrl+J=newline, Esc=quit)")
+                    .title("Input (Enter=send, Ctrl+J=newline, Ctrl+H=left, Ctrl+L=right, Esc=quit)")
                     .borders(Borders::ALL)
                     .border_style(if self.focused {
                         Style::default().fg(Color::Yellow)
                     } else {
                         Style::default()
                     }),
-            )
-            .wrap(Wrap { trim: true });
+            );
 
         frame.render_widget(input_widget, chunks[1]);
+
+        // use native Ratatui Frame for real cursor position
+        // 放置真实终端光标（当输入框获得焦点时）
+        if self.focused {
+            let (col, line) = self.input.cursor_position();
+            let x = chunks[1].x + 1 + col;
+            let y = chunks[1].y + 1 + line;
+            frame.set_cursor_position(Position::new(x, y));
+        }
 
         Ok(())
     }

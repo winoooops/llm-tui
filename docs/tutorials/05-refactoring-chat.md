@@ -200,18 +200,18 @@ impl InputBox {
     pub fn clear(&mut self);
     pub fn move_cursor_left(&mut self);
     pub fn move_cursor_right(&mut self);
-    pub fn insert_char(&mut self, c: char);
+    pub fn enter_char(&mut self, c: char);
     pub fn delete_char(&mut self);
     pub fn insert_newline(&mut self);
-    pub fn render(&self, focused: bool) -> Text<'static>;
+    pub fn render(&self) -> Text<'static>;
+    pub fn cursor_position(&self) -> (u16, u16);
 }
 ```
 
 **内部隐藏的细节：**
-- `cursor_position` 是字节位置
+- `cursor` 是字节位置
 - `char_indices()` 的 UTF-8 边界处理
-- `split('\n')` 与空行处理
-- `Span::styled` 的光标渲染逻辑
+- 终端原生光标定位（`Frame::set_cursor_position`）
 
 ### 为什么这样分是"按功能分"而不是"按流程分"？
 
@@ -327,15 +327,59 @@ pub mod chat;  // 之前是 pub mod chat; 指向 chat.rs
 // 现在指向 chat/mod.rs
 ```
 
+---
+
+### 插曲：伪造光标的 bug 与终端原生光标
+
+在动手写 `input.rs` 之前，我们需要先解决 Tutorial 04 埋下的一个坑。
+
+#### 你看到的症状
+
+输入多行文本后，光标行为变得诡异：
+
+1. 输入 `hello`，按 `Ctrl+J` 换行
+2. 再输入 `world`
+3. 按 `←` 回到第一行
+4. 按 `→` —— 光标没有右移一个字符，而是**跳回了第一行行首**，之后左右键都失效
+
+#### 根因：我们在"画"光标，而不是让终端画
+
+Tutorial 04 的做法是：在 `render()` 里用 `Span::styled` 把当前字符背景涂黄（或在行尾 append 一个 `▋`），制造出一个"看起来像光标"的东西。
+
+这个方案在单行时工作正常，但引入多行后，渲染位置和数据位置开始脱节：
+
+- `cursor_line` / `cursor_col` 按**逻辑行**计算（以 `\n` 分隔）
+- 但 `Paragraph` 的 `Wrap { trim: true }` 会按**显示宽度**折行
+- 空行、行尾、跨行移动时，"画出来的光标"和"数据里的光标"不在同一个视觉坐标上
+
+结果就是：你按了 `→`，数据模型的 `cursor` 确实 +1 了，但渲染逻辑把黄色块画到了错误的位置，让你以为光标"跳走了"或"卡住了"。
+
+#### 正确做法：`Frame::set_cursor_position()`
+
+Ratatui 的 `Frame` 提供了 `set_cursor_position(x, y)`，可以把**真实的终端光标**放到指定坐标。终端自己会负责光标的闪烁、样式（块/竖线/下划线取决于终端设置），而且位置绝对精确。
+
+新架构下：
+
+| 职责 | 归属 |
+|------|------|
+| 管理文本内容和字节级光标位置 | `InputBox` |
+| 把字节位置转成 `(col, line)` 字符坐标 | `InputBox::cursor_position()` |
+| 加上边框偏移，调用 `frame.set_cursor_position()` | `Chat::draw()` |
+
+这样 `InputBox` 完全不碰 `Frame`，只关心文本；`Chat` 作为容器，负责把子模块的坐标映射到屏幕。
+
+#### 对 `render()` 签名的影响
+
+因为光标不再由 `InputBox` "画"出来，`render()` 不再需要 `focused: bool` 参数——无论是否聚焦，它都只返回纯文本。
+
+---
+
 ### Step 1：迁移 InputBox
 
 新建 `src/components/chat/input.rs`：
 
 ```rust
-use ratatui::{
-    style::{Color, Style},
-    text::{Line, Span, Text},
-};
+use ratatui::text::Text;
 
 pub struct InputBox {
     text: String,
@@ -372,7 +416,7 @@ impl InputBox {
         }
     }
 
-    pub fn insert_char(&mut self, c: char) {
+    pub fn enter_char(&mut self, c: char) {
         self.text.insert(self.cursor, c);
         self.cursor += c.len_utf8();
     }
@@ -385,24 +429,61 @@ impl InputBox {
         }
     }
 
-    pub fn insert_newline(&mut self) {
+    pub fn enter_new_line(&mut self) {
         self.text.insert(self.cursor, '\n');
         self.cursor += 1;
     }
 
-    pub fn render(&self, focused: bool) -> Text<'static> {
-        if !focused {
-            return Text::from(self.text.clone());
-        }
-        // ...原来的 build_input_text 逻辑搬进来...
+    pub fn render(&self) -> Text<'static> {
+        Text::from(self.text.clone())
+    }
+
+    pub fn cursor_position(&self) -> (u16, u16) {
+        let text_before = &self.text[..self.cursor];
+        let line = text_before.chars().filter(|&c| c == '\n').count() as u16;
+        let line_start = text_before.rfind('\n').map(|n| n + 1).unwrap_or(0);
+        let col = self.text[line_start..self.cursor].chars().count() as u16;
+        (col, line)
     }
 }
 ```
 
+**`cursor_position()` 是怎么工作的？**
+
+假设文本是 `"hello\nworld"`，`cursor = 9`（在 `r` 和 `l` 之间，第二行中间）：
+
+| 步骤 | 代码 | 计算过程 | 结果 |
+|------|------|---------|------|
+| 取光标前文本 | `text_before = &self.text[..9]` | `"hello\nwor"` | — |
+| 算行号 | `text_before.chars().filter(\|&c\| c == '\n').count()` | 数有几个换行符 | `line = 1`（第 2 行，0-indexed） |
+| 算行首 | `text_before.rfind('\n').map(\|n\| n + 1)` | 最后一个 `\n` 在字节 5，+1 = 6 | `line_start = 6`（`w` 的位置） |
+| 算列号 | `self.text[6..9].chars().count()` | `"wor"` 有 3 个字符 | `col = 3` |
+
+返回值 `(3, 1)` 表示：光标在第 2 行、第 4 列（都是 0-indexed）。
+
+`Chat::draw()` 会把它转成终端绝对坐标：
+
+```rust
+let x = chunks[1].x + 1 + col;  // +1 是左边框占的 1 列
+let y = chunks[1].y + 1 + line; // +1 是上边框占的 1 行
+frame.set_cursor_position(Position::new(x, y));
+```
+
+三个边界情况：
+
+| 场景 | `text` | `cursor` | 返回值 | 含义 |
+|------|--------|----------|--------|------|
+| 空输入 | `""` | 0 | `(0, 0)` | 第一行第一列 |
+| 行尾 | `"hello"` | 5 | `(5, 0)` | 第一行末尾（`o` 之后） |
+| 刚按 `Ctrl+J` | `"hello\n"` | 6 | `(0, 1)` | 第二行开头（空行） |
+
+> 用 `.chars().count()` 而不是字节减法，是为了正确处理多字节字符（中文、emoji）。`é` 占 2 个字节但只算 1 个字符，光标列号必须按字符计。
+
 **关键设计决策**：
 
 - `cursor` 字段是 `pub(crate)` 或私有，**不暴露给 Chat**。Chat 只能通过方法操作输入框。
-- `render` 接收 `focused: bool` 作为参数，而不是让 InputBox 自己存储 focus 状态。为什么？因为 focus 是**容器级**概念（谁获得焦点），不是输入框自己的属性。这个设计让 InputBox 更纯粹。
+- `render` 只返回纯文本，**不做光标样式**。光标由 `Chat::draw()` 通过 `frame.set_cursor_position()` 放置真实的终端光标。这样避免了伪造光标带来的视觉/位置不同步问题。
+- `cursor_position()` 返回光标在文本中的 `(col, line)`。`Chat` 加上边框偏移后调用 `frame.set_cursor_position()`，把终端光标精确放到对应位置。
 
 ### Step 2：迁移 Conversation
 
@@ -583,6 +664,14 @@ impl Component for Chat {
                 self.input.move_cursor_right();
                 Ok(None)
             }
+            KeyCode::Char('h') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                self.input.move_cursor_left();
+                Ok(None)
+            }
+            KeyCode::Char('l') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                self.input.move_cursor_right();
+                Ok(None)
+            }
             KeyCode::Backspace => {
                 self.input.delete_char();
                 Ok(None)
@@ -628,19 +717,25 @@ impl Component for Chat {
             .wrap(Wrap { trim: true });
         frame.render_widget(conversation_widget, chunks[0]);
 
-        let input_widget = Paragraph::new(self.input.render(self.focused))
+        let input_widget = Paragraph::new(self.input.render())
             .block(
                 Block::default()
-                    .title("Input (Enter=send, Ctrl+J=newline, Esc=quit)")
+                    .title("Input (Enter=send, Ctrl+J=newline, Ctrl+H=left, Ctrl+L=right, Esc=quit)")
                     .borders(Borders::ALL)
                     .border_style(if self.focused {
                         Style::default().fg(Color::Yellow)
                     } else {
                         Style::default()
                     }),
-            )
-            .wrap(Wrap { trim: true });
+            );
         frame.render_widget(input_widget, chunks[1]);
+
+        if self.focused {
+            let (col, line) = self.input.cursor_position();
+            let x = chunks[1].x + 1 + col;
+            let y = chunks[1].y + 1 + line;
+            frame.set_cursor_position(Position::new(x, y));
+        }
 
         Ok(())
     }
@@ -650,6 +745,7 @@ impl Component for Chat {
 **看看 `Chat` 变多薄了：**
 
 - `handle_key_event`：只做**路由判断**（这是输入按键还是发送按键？），然后把工作委托出去
+  - 同时支持方向键和 `Ctrl+H`/`Ctrl+L` 移动光标，后者让双手不离开主键区
 - `update`：只做**Action 分发**（这是对话相关还是输入相关？），然后委托出去
 - `draw`：只做**空间分配**（上面 80% 给对话，下面 20% 给输入），然后委托出去
 

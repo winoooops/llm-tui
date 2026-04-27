@@ -334,6 +334,14 @@ fn handle_key_event(&mut self, key: KeyEvent) -> color_eyre::Result<Option<Actio
             self.move_cursor_right();
             Ok(None)
         }
+        KeyCode::Char('h') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+            self.move_cursor_left();
+            Ok(None)
+        }
+        KeyCode::Char('l') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+            self.move_cursor_right();
+            Ok(None)
+        }
         KeyCode::Char(c) => {
             self.enter_char(c);
             Ok(None)
@@ -355,6 +363,10 @@ fn handle_key_event(&mut self, key: KeyEvent) -> color_eyre::Result<Option<Actio
 - 先匹配 `KeyCode::Char('j')`
 - 然后检查 `if` 条件是否成立
 - 只有 `if` 为真时，才走这个分支
+
+**`Ctrl+H` / `Ctrl+L`：不用离开主键区的光标移动**
+
+除了方向键，我们还绑定了 `Ctrl+H`（左）和 `Ctrl+L`（右）。这借鉴了 Vim 的 `hjkl` 习惯——双手不用离开打字区就能移动光标。`Ctrl+H` 在大多数终端里发送的是 ASCII BS（退格），但由于 `crossterm` 能区分方向键和 `Ctrl+Char`，这里不会和 `Backspace` 冲突。
 
 **注意：`Ctrl+J` 的终端兼容性**
 
@@ -428,13 +440,6 @@ fn build_input_text(&self) -> Text<'static> {
         }
     }
 
-    // 3. 处理光标在末尾空行的情况（比如刚按了 Ctrl+J）
-    if self.input.is_empty()
-        || (self.input.ends_with('\n') && cursor_line >= raw_lines.len().saturating_sub(1))
-    {
-        lines.push(Line::from(Span::styled("▋", block_style)));
-    }
-
     Text::from(lines)
 }
 ```
@@ -481,6 +486,10 @@ fn build_input_text(&self) -> Text<'static> {
 
 把这三层像乐高一样拼起来，就能得到"大部分正常显示，只有一个字符高亮"的效果。
 
+> **🐛 修复（2026-04-24）**：早期版本在循环后额外加了段代码处理"光标在末尾空行"的情况，但实际上循环本身已经能正确处理空字符串和末尾换行——`split('\n')` 会保留末尾空行，`cursor_line` 会定位到它，然后走 `else` 分支（光标在行尾）追加 `▋`。那段额外代码反而会导致空输入或末尾换行时**重复渲染两个光标块**。已删除。
+>
+> **💡 后续改进（见 Tutorial 05）**：用 `Span::styled` 伪造光标的做法在跨行、空行时容易出现视觉位置与数据位置不同步的 bug。更可靠的做法是只渲染纯文本，然后用 `frame.set_cursor_position()` 放置**真实的终端光标**。
+
 ### C3. 修改 draw 方法
 
 把原来的：
@@ -495,7 +504,7 @@ let input_widget = Paragraph::new(self.input.as_str())
 let input_widget = Paragraph::new(self.build_input_text())
     .block(
         Block::default()
-            .title("Input (Enter=send, Shift+Enter/Ctrl+J=newline, Esc=quit)")
+            .title("Input (Enter=send, Shift+Enter/Ctrl+J=newline, Ctrl+H=left, Ctrl+L=right, Esc=quit)")
             .borders(Borders::ALL)
             .border_style(if self.focused {
                 Style::default().fg(Color::Yellow)
