@@ -17,6 +17,8 @@
 | [impl 块拆分](impl-blocks.md) | 为什么 `impl Type` 和 `impl Trait for Type` 要分开？ | 了解 trait 后 |
 | [`self` vs `this`](self-vs-this.md) | Rust `self` 参数和 JS/Java `this` 的根本区别？ | 了解所有权后 |
 | [临时值与悬垂引用](temporary-borrow.md) | clone 了为什么还不能返回 `&T`？临时值的生命周期？ | 了解所有权后 |
+| [`Into<T>` 与 `From<T>`](into-trait.md) | `impl Into<String>` 是什么意思？什么时候实现 From、什么时候约束 Into？ | 了解泛型后 |
+| [Result::map + unwrap_or_else](result-map-unwrap.md) | `current_dir().map(...).unwrap_or_else(...)` 这种链式错误处理怎么读？ | 了解 match 后 |
 | [`async move`](async-move.md) | 为什么 `tokio::spawn` 里必须用 `move`？闭包捕获方式？ | 了解所有权后 |
 
 ## 语法速查（不需要顺序阅读）
