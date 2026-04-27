@@ -16,6 +16,7 @@
 | [Trait 是什么](what-is-trait.md) | Trait 的定义？为什么需要它？和 Java interface 的区别？ | 无 |
 | [impl 块拆分](impl-blocks.md) | 为什么 `impl Type` 和 `impl Trait for Type` 要分开？ | 了解 trait 后 |
 | [`self` vs `this`](self-vs-this.md) | Rust `self` 参数和 JS/Java `this` 的根本区别？ | 了解所有权后 |
+| [临时值与悬垂引用](temporary-borrow.md) | clone 了为什么还不能返回 `&T`？临时值的生命周期？ | 了解所有权后 |
 | [`async move`](async-move.md) | 为什么 `tokio::spawn` 里必须用 `move`？闭包捕获方式？ | 了解所有权后 |
 
 ## 语法速查（不需要顺序阅读）

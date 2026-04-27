@@ -18,6 +18,7 @@
 | [Tutorial 02d](tutorials/02d-display-response.md) | 显示回复并测试 | Chat 实时渲染 LLM 流式输出 |
 | [Tutorial 03](tutorials/03-memory-context.md) | 给 Chat 添加记忆 | LLM 记住多轮对话上下文 |
 | [Tutorial 04](tutorials/04-cursor-and-multiline.md) | 输入框光标与多行 | 左右移动、行内编辑、Ctrl+J 换行 |
+| [Tutorial 05](tutorials/05-refactoring-chat.md) | 重构 Chat 组件 | 深模块、信息隐藏、SOLID 原则 |
 
 ## 速记卡与概念笔记
 
