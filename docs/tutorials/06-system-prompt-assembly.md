@@ -189,7 +189,7 @@ fn read_cargo_name() -> Option<String> {
 fn read_package_json_name() -> Option<String> {
     let content = std::fs::read_to_string("package.json").ok()?;
     let v: serde_json::Value = serde_json::from_str(&content).ok()?;
-    v.get("name")?.as_str().map(String::from)
+    v.get("name")?.as_str().map(String::from)  // → 见笔记 [`Option::map`](../notes/option-map.md)
 }
 
 fn read_pyproject_name() -> Option<String> {
@@ -198,7 +198,7 @@ fn read_pyproject_name() -> Option<String> {
         .lines()
         .find(|line| line.trim_start().starts_with("name"))
         .and_then(|line| line.split('=').nth(1))
-        .map(|s| s.trim().trim_matches('"').to_string())
+        .map(|s| s.trim().trim_matches('"').to_string())  // → 见笔记 [`Option::map`](../notes/option-map.md)
 }
 
 fn read_dir_basename() -> Option<String> {
