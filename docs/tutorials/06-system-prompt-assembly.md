@@ -128,7 +128,8 @@ use std::path::Path;
 
 pub struct PromptContext {
     pub cwd: String,              // 当前工作目录
-    pub project_name: String,     // 从 Cargo.toml 读
+    pub project_name: String,     // 按优先级探测：Cargo.toml → package.json → pyproject.toml → 目录名
+    pub project_type: String,     // "rust" | "node" | "python" | "unknown"
     pub project_summary: String,  // 从 README.md 前 500 字读
     pub agents_md: Option<String>, // 项目级 AGENTS.md 内容（如果有）
 }
@@ -146,25 +147,26 @@ impl PromptContext {
             .map(|p| p.display().to_string())
             .unwrap_or_else(|_| ".".into());  // → 见笔记 [`Result::map + unwrap_or_else`](../notes/result-map-unwrap.md)
 
-        let project_name = read_cargo_name()
-            .or_else(|| Path::new(&cwd).file_name().and_then(|s| s.to_str()).map(String::from))
-            .unwrap_or_else(|| "unknown".into());
+        let project_name = detect_project_name();
+        let project_type = detect_project_type();
         let project_summary = read_readme_summary(README_SUMMARY_MAX_CHARS);
         let agents_md = read_agents_md();
 
         Self {
             cwd,
             project_name,
+            project_type,
             project_summary,
             agents_md,
         }
     }
 
     /// 直接构造（测试路径）。不需要 touching disk。
-    pub fn new(cwd: &str, project_name: &str, project_summary: &str, agents_md: Option<&str>) -> Self {
+    pub fn new(cwd: &str, project_name: &str, project_type: &str, project_summary: &str, agents_md: Option<&str>) -> Self {
         Self {
             cwd: cwd.into(),
             project_name: project_name.into(),
+            project_type: project_type.into(),
             project_summary: project_summary.into(),
             agents_md: agents_md.map(|s| s.into()),
         }
@@ -172,7 +174,7 @@ impl PromptContext {
 }
 ```
 
-三个辅助函数：
+项目名探测函数（按优先级 fallback）：
 
 ```rust
 fn read_cargo_name() -> Option<String> {
@@ -184,6 +186,54 @@ fn read_cargo_name() -> Option<String> {
         .map(|s| s.trim().trim_matches('"').to_string())
 }
 
+fn read_package_json_name() -> Option<String> {
+    let content = std::fs::read_to_string("package.json").ok()?;
+    let v: serde_json::Value = serde_json::from_str(&content).ok()?;
+    v.get("name")?.as_str().map(String::from)
+}
+
+fn read_pyproject_name() -> Option<String> {
+    let content = std::fs::read_to_string("pyproject.toml").ok()?;
+    content
+        .lines()
+        .find(|line| line.trim_start().starts_with("name"))
+        .and_then(|line| line.split('=').nth(1))
+        .map(|s| s.trim().trim_matches('"').to_string())
+}
+
+fn read_dir_basename() -> Option<String> {
+    std::env::current_dir().ok()?
+        .file_name()?
+        .to_str()
+        .map(String::from)
+}
+
+/// 按优先级探测项目名：Rust → Node/TS → Python → 目录名
+fn detect_project_name() -> String {
+    read_cargo_name()
+        .or_else(read_package_json_name)
+        .or_else(read_pyproject_name)
+        .or_else(read_dir_basename)
+        .unwrap_or_else(|| "unknown".into())
+}
+
+/// 根据哪个 manifest 存在来判断项目类型
+fn detect_project_type() -> String {
+    if std::path::Path::new("Cargo.toml").exists() {
+        "rust".into()
+    } else if std::path::Path::new("package.json").exists() {
+        "node".into()
+    } else if std::path::Path::new("pyproject.toml").exists() {
+        "python".into()
+    } else {
+        "unknown".into()
+    }
+}
+```
+
+其他辅助函数：
+
+```rust
 fn read_readme_summary(max_chars: usize) -> String {
     let content = match std::fs::read_to_string("README.md") {
         Ok(s) => s,
@@ -202,7 +252,7 @@ fn read_agents_md() -> Option<String> {
 - `new()` 让测试可以直接构造假上下文，不用 mock 文件系统
 - 用 `Option` / 空字符串做 fallback，防止某个文件不存在导致整个 Prompt 崩掉
 - `README_SUMMARY_MAX_CHARS` 限制 README 长度，避免把几万字的文档全塞进 System Prompt（上下文窗口很贵的）
-- `read_cargo_name` 是 **Rust 专用** 的——它只认识 `Cargo.toml`。真正的 Coding Agent 应该按检测到的项目类型分发（`Cargo.toml` / `package.json` / `pyproject.toml`），这里先保持最小实现。
+- `detect_project_name()` 的 `or_else` 链是**策略模式的最小形式**——不引入 trait 抽象，但能处理 Rust / Node / Python 三种项目。后续如果要支持 Go、Java 等，继续往链后面加即可。
 
 ---
 
@@ -229,8 +279,9 @@ pub fn assemble_system_message(static_prompt: &str, ctx: &PromptContext) -> Mess
     let mut dynamic = format!(
         "# Environment\n\
          - Working directory: {}\n\
-         - Project: {}\n",
-        ctx.cwd, ctx.project_name
+         - Project: {}\n\
+         - Project type: {}\n",
+        ctx.cwd, ctx.project_name, ctx.project_type
     );
 
     if !ctx.project_summary.is_empty() {
