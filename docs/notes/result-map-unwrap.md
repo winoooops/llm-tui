@@ -85,6 +85,50 @@ std::env::current_dir()
 
 ---
 
+## 具体例子
+
+假设你的项目放在 `/home/will/projects/simple-gui`，程序在这里运行：
+
+```rust
+let cwd = std::env::current_dir()
+    .map(|p| p.display().to_string())
+    .unwrap_or_else(|_| ".".into());
+```
+
+**成功路径**（99% 的情况）：
+
+```
+std::env::current_dir()
+→ Ok(PathBuf("/home/will/projects/simple-gui"))
+
+.map(|p| p.display().to_string())
+→ Ok(String::from("/home/will/projects/simple-gui"))
+
+.unwrap_or_else(|_| ".".into())
+→ 遇到 Ok，直接取出里面的 String
+
+最终结果：cwd = "/home/will/projects/simple-gui"
+```
+
+**失败路径**（当前目录被删了）：
+
+```
+std::env::current_dir()
+→ Err(io::Error { ... })
+
+.map(|p| ...)
+→ 跳过，还是 Err(...)
+
+.unwrap_or_else(|_| ".".into())
+→ 遇到 Err，执行闭包，返回 String::from(".")
+
+最终结果：cwd = "."
+```
+
+`|` 表示当前目录的相对路径——如果不知道绝对路径，用 `"."` 至少不会崩。
+
+---
+
 ## 等价写法对比
 
 | 写法 | 风格 | 推荐度 |
