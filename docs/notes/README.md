@@ -19,6 +19,7 @@
 | [临时值与悬垂引用](temporary-borrow.md) | clone 了为什么还不能返回 `&T`？临时值的生命周期？ | 了解所有权后 |
 | [`Into<T>` 与 `From<T>`](into-trait.md) | `impl Into<String>` 是什么意思？什么时候实现 From、什么时候约束 Into？ | 了解泛型后 |
 | [Result::map + unwrap_or_else](result-map-unwrap.md) | `current_dir().map(...).unwrap_or_else(...)` 这种链式错误处理怎么读？ | 了解 match 后 |
+| [`Option::map`](option-map.md) | 为什么 `read_cargo_name()` 最后要跟 `.map(|s| s.to_string())`？ | 了解 Option 后 |
 | [`async move`](async-move.md) | 为什么 `tokio::spawn` 里必须用 `move`？闭包捕获方式？ | 了解所有权后 |
 
 ## 语法速查（不需要顺序阅读）
