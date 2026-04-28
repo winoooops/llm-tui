@@ -5,15 +5,14 @@ use tokio::sync::mpsc::UnboundedSender;
 const LLM_API_URL: &str = "http://127.0.0.1:8080/v1/chat/completions";
 
 pub async fn stream_chat(
-    messages: Vec<Message>,
+    system: &Message,
+    messages: &[Message],
     tx: UnboundedSender<Action>,
 ) -> color_eyre::Result<()> {
     let client = reqwest::Client::new();
 
-    let api_messages: Vec<_> = messages
-        .iter()
-        .map(|m| serde_json::json!({"role": &m.role, "content": &m.content}))
-        .collect();
+    let mut api_messages: Vec<&Message> = vec![system];
+    api_messages.extend(messages.iter());
 
     let body = serde_json::json!({
         "model": "gemma-4-31b",

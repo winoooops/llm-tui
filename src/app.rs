@@ -154,11 +154,12 @@ impl App {
                 Action::ClearScreen => tui.terminal.clear()?,
                 Action::Resize(w, h) => self.handle_resize(tui, w, h)?,
                 Action::Render => self.render(tui)?,
-                Action::SendMessage(ref history) => {
-                    let tx = self.action_tx.clone();
+                Action::SendMessage(ref system_prompt, ref history) => {
+                    let system = system_prompt.clone();
                     let history = history.clone();
+                    let tx = self.action_tx.clone();
                     tokio::spawn(async move {
-                        if let Err(e) = llm::stream_chat(history, tx).await {
+                        if let Err(e) = llm::stream_chat(&system, &history, tx).await {
                             tracing::error!("LLM error: {}", e);
                         }
                     });

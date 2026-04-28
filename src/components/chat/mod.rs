@@ -12,7 +12,7 @@ use crate::{
     components::{
         Component,
         chat::{conversation::Conversation, input::Input},
-    },
+    }, message::Message, prompt::PromptContext,
 };
 
 pub mod conversation;
@@ -20,6 +20,7 @@ pub mod input;
 
 pub struct Chat {
     command_tx: Option<UnboundedSender<Action>>,
+    system_prompt: Message,
     conversation: Conversation,
     input: Input,
     focused: bool,
@@ -29,6 +30,7 @@ impl Chat {
     pub fn new() -> Self {
         Self {
             command_tx: None,
+            system_prompt: PromptContext::from_environment().system_prompt(),
             conversation: Conversation::new(),
             input: Input::new(),
             focused: true,
@@ -55,6 +57,7 @@ impl Component for Chat {
 
                     if let Some(ref tx) = self.command_tx {
                         let _ = tx.send(Action::SendMessage(
+                            self.system_prompt.clone(),
                             self.conversation.messages().to_vec(),
                         ));
                     }
