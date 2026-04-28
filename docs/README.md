@@ -20,6 +20,7 @@
 | [Tutorial 04](tutorials/04-cursor-and-multiline.md) | 输入框光标与多行 | 左右移动、行内编辑、Ctrl+J 换行 |
 | [Tutorial 05](tutorials/05-refactoring-chat.md) | 重构 Chat 组件 | 深模块、信息隐藏、SOLID 原则 |
 | [Tutorial 06](tutorials/06-system-prompt-assembly.md) | System Prompt 组装 | 静态区 + 动态区 + 项目上下文注入 |
+| [Tutorial 07](tutorials/07-app-vs-chat-system-prompt.md) | App vs Chat：谁该拥有 System Prompt？ | 架构权衡、SRP、穿堂风反模式 |
 
 ## 速记卡与概念笔记
 
