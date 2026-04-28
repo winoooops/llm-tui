@@ -518,12 +518,24 @@ let log_path = directory.join("llm-tui.log");
 **查看日志的方法**：
 
 ```bash
-# 方法 1：TUI 运行中，另开一个终端实时 tail
+# 方法 1：先清空日志，启动 tail，再运行 TUI（顺序很重要）
+> ~/.local/share/llm-tui/llm-tui.log
 tail -f ~/.local/share/llm-tui/llm-tui.log
+# 另开终端：cargo run
 
-# 方法 2：TUI 退出后一次性查看
-cat ~/.local/share/llm-tui/llm-tui.log
+# 方法 2：TUI 退出后用 cat 查看完整文件
+cat ~/.local/share/llm-tui/llm-tui.log | head -40
 ```
+
+> **`tail -f` 的时机陷阱**：`tail -f` 只会显示它**启动之后**新写入的内容。如果你先启动了 TUI，再开 `tail -f`，那么 system prompt（在 TUI 启动时写入）已经错过了。必须先 `tail -f`，再 `cargo run`。
+>
+> 如果嫌顺序麻烦，可以把 `src/logging.rs` 改成追加模式，这样旧日志保留，随时 `cat` 都能看：
+> ```rust
+> let log_file = std::fs::OpenOptions::new()
+>     .create(true)
+>     .append(true)
+>     .open(log_path)?;
+> ```
 
 ### 为什么可能看不到 INFO 日志？
 
