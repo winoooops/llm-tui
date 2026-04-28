@@ -15,7 +15,7 @@ pub enum Action {
     Error(String),
     Help,
     #[strum(to_string = "SendMessage")] // see @docs/notes/03-memory-context.md for more
-    SendMessage(Message, Vec<Message>), // user sends prompt
+    SendMessage(Vec<Message>), // user sends prompt
     ReceiveChunk(String), // agents responds in stream
     StreamEnd,            // marks when the stream respond is completed
 }

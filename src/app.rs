@@ -5,6 +5,8 @@ use tokio::sync::mpsc;
 use tracing::{debug, info};
 
 use crate::llm;
+use crate::message::Message;
+use crate::prompt::PromptContext;
 use crate::{
     action::Action,
     components::{Component, chat::Chat, fps::FpsCounter, home::Home},
@@ -23,6 +25,7 @@ pub struct App {
     last_tick_key_events: Vec<KeyEvent>,
     action_tx: mpsc::UnboundedSender<Action>,
     action_rx: mpsc::UnboundedReceiver<Action>,
+    system_prompt: Message,
 }
 
 #[derive(Default, Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -34,6 +37,7 @@ pub enum Mode {
 impl App {
     pub fn new(tick_rate: f64, frame_rate: f64) -> color_eyre::Result<Self> {
         let (action_tx, action_rx) = mpsc::unbounded_channel();
+        let system_prompt = PromptContext::from_environment().system_prompt();
         Ok(Self {
             tick_rate,
             frame_rate,
@@ -49,6 +53,7 @@ impl App {
             last_tick_key_events: Vec::new(),
             action_tx,
             action_rx,
+            system_prompt,
         })
     }
 
@@ -154,8 +159,8 @@ impl App {
                 Action::ClearScreen => tui.terminal.clear()?,
                 Action::Resize(w, h) => self.handle_resize(tui, w, h)?,
                 Action::Render => self.render(tui)?,
-                Action::SendMessage(ref system_prompt, ref history) => {
-                    let system = system_prompt.clone();
+                Action::SendMessage(ref history) => {
+                    let system = self.system_prompt.clone();
                     let history = history.clone();
                     let tx = self.action_tx.clone();
                     tokio::spawn(async move {

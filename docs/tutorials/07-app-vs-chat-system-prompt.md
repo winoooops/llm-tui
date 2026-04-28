@@ -1,22 +1,20 @@
-# App vs Chat：谁该拥有 System Prompt？
+# Tutorial 07：App vs Chat —— 谁该拥有 System Prompt？
 
-这是一个架构设计问题，没有绝对正确答案，但可以用 SRP + 信息隐藏来权衡。
-
----
-
-## 当前设计（Chat 拥有）
-
-```
-App::new()
-  └─ Chat::new()
-       └─ PromptContext::from_environment().system_prompt()
-```
-
-`Chat` 存储 `system_prompt: Message`，发送时 `clone()` 给 `Action::SendMessage`。
+> **目标**：用 SRP + 信息隐藏分析 System Prompt 的归属，并实现一种比"注入 Chat"更干净的方案。
+> **前置要求**：已完成 [Tutorial 06](06-system-prompt-assembly.md)。
 
 ---
 
-## 挑战：System Prompt 到底是谁的上下文？
+## 问题
+
+Tutorial 06 完成后，System Prompt 由 `PromptContext` 组装。但它该存在哪里？
+
+- **Chat 拥有**？Chat 是发消息的组件，似乎该它管。
+- **App 拥有**？App 是组合根，管全局配置更合理。
+
+---
+
+## System Prompt 到底是谁的上下文？
 
 | 维度 | Chat 的上下文 | App 的上下文 |
 |------|--------------|-------------|
@@ -25,142 +23,197 @@ App::new()
 | 当前聚焦状态 | ✅ | ❌ |
 | AI 的身份定义（"你是 Coding Agent"） | ❌ | ✅ |
 | 项目类型（Rust/Node/Python） | ❌ | ✅ |
-| 工作目录 | ❌ | ✅ |
-| AGENTS.md 约束 | ❌ | ✅ |
+| 工作目录、AGENTS.md | ❌ | ✅ |
 
-**关键洞察**：System Prompt 的 90% 内容是"这个项目是什么样的"、"AI 该怎么 behave"——这是**应用级**信息，不是**聊天窗口级**信息。
-
----
-
-## 如果 Chat 拥有（当前设计）的问题
-
-### 1. Chat 被迫知道文件系统
-
-```
-Chat ──→ PromptContext ──→ 读 Cargo.toml、README.md、AGENTS.md
-```
-
-Chat 是一个 UI 组件，它的职责是：接收按键、渲染输入框、显示对话气泡。现在它被迫耦合项目探测逻辑。
-
-### 2. "穿堂风"（Pass-through）反模式
-
-Chat 并不**使用** system prompt 的内容——它不基于 prompt 做决策、不解析 prompt、不修改 prompt。它只是：
-1. 存起来
-2. `clone()` 
-3. 转发给 Action
-
-这叫**穿堂风**——数据从一头进、另一头出，中间模块只是过道。《A Philosophy of Software Design》明确说这是 bad smell。
-
-### 3. 无法共享
-
-如果未来加第二个 LLM 消费者（比如侧边栏显示 "AI 建议"），它也需要 system prompt。但 prompt 锁在 Chat 里，其他组件拿不到。
+**关键洞察**：System Prompt 的 90% 是"这个项目是什么样的"、"AI 该怎么 behave"——这是**应用级**信息，不是**聊天窗口级**信息。
 
 ---
 
-## 如果 App 拥有的好处
+## 方案对比
+
+### 方案 A：Chat 拥有（Tutorial 06 初始设计）
+
+```
+Chat::new()
+  └─ PromptContext::from_environment().system_prompt()
+```
+
+Chat 存 `system_prompt: Message`，发 `Action::SendMessage(system, history)`。
+
+**问题**：
+1. Chat 被迫耦合文件系统（Cargo.toml、README.md）
+2. **穿堂风**：Chat 不解析、不使用 prompt，只是存 → clone → 转发
+3. Action 变胖：`SendMessage(Message, Vec<Message>)`
+
+### 方案 B：App 拥有，注入 Chat（常见做法）
 
 ```
 App::new()
-  ├─ PromptContext::from_environment().system_prompt()
-  │
-  └─ Chat::new(system_prompt)   // 注入，不是让 Chat 自己组装
+  ├─ system_prompt = PromptContext::from_environment().system_prompt()
+  └─ Chat::new(system_prompt)   // 通过构造函数注入
 ```
 
-### 1. 职责边界清晰
+Chat 仍然存 `system_prompt: Message`，但不再负责组装。
 
-| 模块 | 知道什么 |
-|------|---------|
-| App | 项目上下文、AI 身份、System Prompt 组装 |
-| Chat | 用户输入、对话历史、渲染、事件路由 |
-| llm.rs | HTTP 传输、序列化 |
+**改进**：消除了文件系统耦合，但 Chat 仍是穿堂风——它只是替 App 保管 prompt。
 
-### 2. Chat 变薄，更容易测试
+### 方案 C：App 拥有，不注入 Chat，只在 dispatch 层拼接 ⭐
 
-```rust
-// 测试 Chat 时，直接注入假 prompt，不用 mock 文件系统
-let chat = Chat::new(Message::system("test"));
+```
+App::new()
+  └─ system_prompt = PromptContext::from_environment().system_prompt()
+
+Chat::handle_key_event()
+  └─ Action::SendMessage(history)   // 只带对话历史
+
+App::handle_actions()
+  └─ SendMessage(history) ──→ llm::stream_chat(&system_prompt, &history, tx)
 ```
 
-### 3. 多组件共享天然支持
+**Chat 完全不知道 system prompt 存在。**
+
+| 指标 | 方案 A | 方案 B | 方案 C |
+|------|--------|--------|--------|
+| Chat 是否知悉 system prompt | 组装 + 存储 | 只存储 | **完全不知** |
+| Action 定义 | `SendMessage(Message, Vec<Message>)` | 同上 | `SendMessage(Vec<Message>)` |
+| 穿堂风 | 严重 | 中等 | **无** |
+
+---
+
+## 为什么方案 C 最干净
+
+### 1. Action 只携带"用户数据"
 
 ```rust
-let system_prompt = PromptContext::from_environment().system_prompt();
-
-App {
-    chat: Chat::new(system_prompt.clone()),
-    sidebar: Sidebar::new(system_prompt.clone()), // 未来扩展
+pub enum Action {
+    // ...
+    SendMessage(Vec<Message>),  // 只有对话历史
 }
 ```
 
----
+System prompt 不是用户产生的，不应该出现在用户 action 里。就像 HTTP request body 只传业务数据，auth token 放在 header 里由客户端统一加。
 
-## 反对意见 & 回应
-
-**"但 Chat 是发消息的，它应该知道发什么"**
-
-Chat 知道的是**用户消息**（"帮我把这个函数重构一下"）。System prompt 不是消息，是**会话配置**——就像 HTTP Header 不是 Body。App 组装 Header，Chat 发 Body。
-
-**"那 App 不是也变厚了吗？"**
-
-App 本来就是**组合根**（Composition Root）——所有高层对象的组装中心。它本来就该负责：
-- 创建组件
-- 注入依赖
-- 配置全局行为
-
-这是 App 的正当职责，不是 fat。
-
----
-
-## 最小改动迁移方案
-
-**改 `Chat::new` 接收 system_prompt：**
+### 2. Chat 彻底纯粹
 
 ```rust
-// src/components/chat/mod.rs
 pub struct Chat {
-    system_prompt: Message,
-    // ...
+    conversation: Conversation,
+    input: Input,
+    focused: bool,
+    // 没有 system_prompt 字段
 }
 
 impl Chat {
-    pub fn new(system_prompt: Message) -> Self {
+    pub fn new() -> Self {  // 无参构造
         Self {
-            system_prompt,
             conversation: Conversation::new(),
             input: Input::new(),
+            focused: true,
+        }
+    }
+}
+```
+
+Chat 只做 UI：收按键、管输入框、显示对话。它甚至不知道有 system prompt 这回事。
+
+### 3. App 在"最后一公里"注入
+
+```rust
+// src/app.rs
+fn handle_actions(&mut self, tui: &mut Tui) -> Result<()> {
+    while let Ok(action) = self.action_rx.try_recv() {
+        match action {
+            Action::SendMessage(ref history) => {
+                let system = self.system_prompt.clone();
+                let history = history.clone();
+                let tx = self.action_tx.clone();
+                tokio::spawn(async move {
+                    let _ = llm::stream_chat(&system, &history, tx).await;
+                });
+            }
             // ...
         }
     }
 }
 ```
 
-**改 `App::new` 组装并注入：**
+App 是**组合根**，也是**调度中心**。它知道：
+- system prompt 是什么（自己存的）
+- 什么时候该发 LLM 请求（收到 SendMessage action）
+- 怎么发（调用 `llm::stream_chat`）
+
+这三件事都在 App 里发生，没有信息泄露给 Chat。
+
+---
+
+## 迁移步骤
+
+### Step 1：App 存 system_prompt
 
 ```rust
 // src/app.rs
-use crate::prompt::PromptContext;
+pub struct App {
+    // ...
+    system_prompt: Message,
+}
 
 impl App {
     pub fn new(tick_rate: f64, frame_rate: f64) -> Result<Self> {
         let system_prompt = PromptContext::from_environment().system_prompt();
-        
         Ok(Self {
-            components: vec![
-                Box::new(Home::new()),
-                Box::new(FpsCounter::default()),
-                Box::new(Chat::new(system_prompt)),  // ← 注入
-            ],
             // ...
+            system_prompt,
         })
     }
 }
 ```
 
-**删除 `Chat` 对 `prompt` 模块的依赖：**
+### Step 2：Action 瘦身
 
 ```rust
-// 之前
-use crate::prompt::PromptContext;  // 可以删掉
+// src/action.rs
+pub enum Action {
+    // ...
+    SendMessage(Vec<Message>),  // 去掉 Message（system prompt）
+}
+```
+
+### Step 3：Chat 删掉 system_prompt
+
+```rust
+// src/components/chat/mod.rs
+pub struct Chat {
+    conversation: Conversation,
+    input: Input,
+    focused: bool,
+    // 删除 system_prompt 字段
+}
+
+impl Chat {
+    pub fn new() -> Self {
+        Self {
+            conversation: Conversation::new(),
+            input: Input::new(),
+            focused: true,
+        }
+    }
+}
+```
+
+### Step 4：App handle_actions 拼接
+
+```rust
+// src/app.rs
+Action::SendMessage(ref history) => {
+    let system = self.system_prompt.clone();
+    let history = history.clone();
+    let tx = self.action_tx.clone();
+    tokio::spawn(async move {
+        if let Err(e) = llm::stream_chat(&system, &history, tx).await {
+            tracing::error!("LLM error: {}", e);
+        }
+    });
+}
 ```
 
 ---
@@ -169,4 +222,6 @@ use crate::prompt::PromptContext;  // 可以删掉
 
 > **System Prompt 是应用级配置，不是聊天窗口级状态。**
 >
-> App 组装，Chat 消费。这符合 SRP，也消除了穿堂风。
+> **App 组装，App 调度，Chat 完全不知悉。**
+>
+> 这比"注入 Chat"更彻底——Chat 不是过道，它根本不在那条路上。
