@@ -33,7 +33,7 @@ impl PromptContext {
         }
     }
 
-    /* collect the context from arguments */
+    #[allow(dead_code)] // 供测试直接构造，主流程用 from_environment()
     pub fn new(cwd: &str, project_name: &str, project_summary: &str, project_type: &str, agents_md: Option<&str>) -> Self {
         Self {
             cwd: cwd.into(),

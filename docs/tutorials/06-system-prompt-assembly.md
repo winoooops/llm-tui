@@ -486,7 +486,7 @@ KeyCode::Char('r') if key.modifiers.contains(KeyModifiers::CONTROL) => {
 
 ## 验证
 
-改完后，启动程序，发一条消息，然后在 `Chat::new()` 里打印确认：
+改完后，在 `Chat::new()` 里加一行日志确认：
 
 ```rust
 pub fn new() -> Self {
@@ -506,22 +506,54 @@ pub fn new() -> Self {
 }
 ```
 
+### 日志写在哪里？
+
+TUI 程序会接管整个终端（alternate screen），所以 `tracing::info!()` 不能输出到 stdout——你会看不到。项目的 `src/logging.rs` 已经配置好把日志写到文件：
+
+```rust
+let directory = config::get_data_dir();  // → ~/.local/share/llm-tui/
+let log_path = directory.join("llm-tui.log");
+```
+
+**查看日志的方法**：
+
+```bash
+# 方法 1：TUI 运行中，另开一个终端实时 tail
+tail -f ~/.local/share/llm-tui/llm-tui.log
+
+# 方法 2：TUI 退出后一次性查看
+cat ~/.local/share/llm-tui/llm-tui.log
+```
+
+### 为什么可能看不到 INFO 日志？
+
+如果日志文件里只有 ERROR，没有 INFO，检查 `src/logging.rs` 的 `EnvFilter` 配置。正确的写法：
+
+```rust
+let env_filter = EnvFilter::builder()
+    .with_default_directive(tracing::Level::INFO.into())
+    .from_env_lossy();
+```
+
+`from_env_lossy()` 会读 `RUST_LOG` 环境变量，如果没设置就默认用 `INFO`。如果用了复杂的 `try_from_env().or_else(...)` 组合，容易因为 filter 为空而回退到 `ERROR` 级别。
+
+### 预期输出
+
 你应该能在日志里看到类似这样的结构：
 
 ```
-You are a helpful coding assistant embedded in a terminal UI.
-...
+2026-04-28T04:22:45.640825Z  INFO src/components/chat/mod.rs:32: system prompt loaded: You are a helpful coding assistant...
 
 __SYSTEM_PROMPT_DYNAMIC_BOUNDARY__
 
 # Environment
 - Working directory: /home/you/projects/llm-tui
 - Project: llm-tui
+- Project type: rust
 
 # Project Summary
 # llm-tui
-
-A terminal UI chat application...
+...
 ```
 
 如果看到了，说明 System Prompt 已经成功注入到 API 请求里了。
