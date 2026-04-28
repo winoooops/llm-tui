@@ -73,3 +73,64 @@ impl Input {
         (col, line)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use pretty_assertions::assert_eq;
+
+    #[test]
+    fn new_input_is_empty() {
+        let input = Input::new();
+        assert!(input.is_empty());
+        assert_eq!(input.text(), "")
+    }
+
+    #[test]
+    fn enter_char_appends() {
+        let mut input = Input::new();
+        input.enter_char('a');
+        assert_eq!(input.text, "a")
+    }
+
+    #[test]
+    fn cursor_position_at_start() {
+        let input = Input::new();
+        assert_eq!(input.cursor_position(), (0, 0))
+    }
+
+    #[test]
+    fn new_line_and_cursor_position() {
+        let mut input = Input::new();
+        input.enter_char('a');
+        input.enter_new_line();
+        input.enter_char('b');
+        assert_eq!(input.text, "a\nb");
+        assert_eq!(input.cursor_position(), (1, 1))
+    }
+
+    #[test]
+    fn move_cursor_left_and_right() {
+        let mut input = Input::new();
+        input.enter_char('a');
+        input.enter_char('b');
+        assert_eq!(input.cursor_position(), (2, 0));
+        input.move_cursor_left();
+        assert_eq!(input.cursor_position(), (1, 0));
+        input.move_cursor_left();
+        assert_eq!(input.cursor_position(), (0, 0));
+        input.move_cursor_right();
+        assert_eq!(input.cursor_position(), (1, 0))
+    }
+
+    #[test]
+    fn unicode_char_handling() {
+        let mut input = Input::new();
+        input.enter_char('中');
+        input.enter_char('文');
+        assert_eq!(input.text(), "中文");
+        input.move_cursor_left();
+        input.delete_char();
+        assert_eq!(input.text(), "文");
+    }
+}

@@ -2484,6 +2484,7 @@ dependencies = [
  "signal-hook 0.3.18",
  "strip-ansi-escapes",
  "strum 0.26.3",
+ "tempfile",
  "tokio",
  "tokio-util",
  "tracing",

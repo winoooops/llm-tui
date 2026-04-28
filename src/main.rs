@@ -12,9 +12,9 @@ mod errors;
 mod llm;
 mod logging;
 mod message;
+mod prompt;
 mod tui;
 mod utils;
-mod prompt;
 
 #[tokio::main]
 async fn main() -> color_eyre::Result<()> {

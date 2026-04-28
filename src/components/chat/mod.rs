@@ -54,9 +54,7 @@ impl Component for Chat {
                     self.conversation.start_response();
 
                     if let Some(ref tx) = self.command_tx {
-                        let _ = tx.send(Action::SendMessage(
-                            self.conversation.messages().to_vec(),
-                        ));
+                        let _ = tx.send(Action::SendMessage(self.conversation.messages().to_vec()));
                     }
                 }
                 Ok(None)
@@ -131,17 +129,16 @@ impl Component for Chat {
             .wrap(Wrap { trim: true });
         frame.render_widget(conversation_widget, chunks[0]);
 
-        let input_widget = Paragraph::new(self.input.render())
-            .block(
-                Block::default()
-                    .title("Input (Enter=send, Ctrl+J=newline, Ctrl+H=left, Ctrl+L=right, Esc=quit)")
-                    .borders(Borders::ALL)
-                    .border_style(if self.focused {
-                        Style::default().fg(Color::Yellow)
-                    } else {
-                        Style::default()
-                    }),
-            );
+        let input_widget = Paragraph::new(self.input.render()).block(
+            Block::default()
+                .title("Input (Enter=send, Ctrl+J=newline, Ctrl+H=left, Ctrl+L=right, Esc=quit)")
+                .borders(Borders::ALL)
+                .border_style(if self.focused {
+                    Style::default().fg(Color::Yellow)
+                } else {
+                    Style::default()
+                }),
+        );
 
         frame.render_widget(input_widget, chunks[1]);
 
