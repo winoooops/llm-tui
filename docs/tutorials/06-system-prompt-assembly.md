@@ -318,10 +318,54 @@ pub fn assemble_system_message(static_prompt: &str, ctx: &PromptContext) -> Mess
 
 ---
 
-## Step 5：注入 API 调用
+## Step 5：注入 API 调用 —— 以及为什么 `llm.rs` 不该做这件事
 
-System Prompt 应该**只组装一次**（程序启动时），而不是每次调用 LLM 都重新读盘。否则：
-- 每轮对话触发 4 次文件读取（cwd + Cargo.toml + README.md + AGENTS.md）
+### 先回答一个架构问题：System Prompt 该归谁管？
+
+你可能在想：既然 `PromptContext` 能产出 `Message`，为什么不直接在 `llm.rs` 里链式调用？
+
+```rust
+// ❌ 不要这样做
+let system = PromptContext::from_environment().system_prompt();
+```
+
+用 **单一职责原则（SRP）** 来看，答案很清楚。**SRP 问的是：这个模块有几个"变更理由"？**
+
+假设 `llm.rs` 负责组装 prompt：
+
+| 谁要求变更 | 变更内容 | 是否 touch `llm.rs` |
+|-----------|---------|-------------------|
+| 后端升级 | llama.cpp 响应格式变了 | ✅ |
+| 换网络库 | reqwest 换成 hyper | ✅ |
+| 产品经理 | 用户想自定义 prompt 模板 | ✅ |
+| 新功能 | 支持 Python 项目（加 pyproject.toml） | ✅ |
+| 新功能 | 动态区加入 git branch | ✅ |
+| 体验优化 | Prompt 太长，要截断 | ✅ |
+
+**6 个不同的理由**，来自 6 个不同的人，都会修改同一个文件。这是 SRP violation。
+
+更严重的是**依赖方向**：
+
+```
+llm.rs ──→ prompt.rs ──→ 文件系统（Cargo.toml、README.md）
+```
+
+HTTP 传输层（最底层的基础设施）被迫耦合文件系统。测试 `stream_chat` 时，要么真的读盘，要么 mock 整个文件系统——而测试 HTTP 本来只需要 mock 一个 TCP 连接。
+
+**正确做法**：把 prompt 组装从 `llm.rs` 抽出来，放到 `Chat::new()`（或 `App::new()`）。`llm.rs` 只收成品 `Message`，不关心它从哪来。
+
+| 模块 | 职责 | 变更理由 |
+|------|------|---------|
+| `llm.rs` | HTTP 传输：序列化、POST、SSE 解析 | API 格式、网络库 |
+| `prompt.rs` / `Chat` | Prompt 组装：读文件、拼接、格式化 | 模板内容、项目类型、上下文源 |
+
+判断口诀： **`llm.rs` 是管道，不是厨子。** 厨子决定做什么菜，管道只负责把菜端到餐桌。
+
+---
+
+### 为什么 System Prompt 只该组装一次？
+
+- 每轮对话都重新读盘 = 4 次文件 IO（cwd + Cargo.toml + README.md + AGENTS.md）
 - 如果中途改了 `AGENTS.md`，同一对话的 system prompt 会漂移，破坏上下文一致性
 - `llm.rs`（HTTP 层）被迫依赖文件系统布局，违反依赖倒置
 
