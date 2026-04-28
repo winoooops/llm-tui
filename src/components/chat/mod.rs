@@ -28,9 +28,12 @@ pub struct Chat {
 
 impl Chat {
     pub fn new() -> Self {
+        let system_prompt = PromptContext::from_environment().system_prompt();
+        tracing::info!("system prompt loaded: {}", system_prompt.content);
+
         Self {
             command_tx: None,
-            system_prompt: PromptContext::from_environment().system_prompt(),
+            system_prompt,
             conversation: Conversation::new(),
             input: Input::new(),
             focused: true,
