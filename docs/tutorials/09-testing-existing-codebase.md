@@ -591,10 +591,8 @@ mod tests {
     fn start_response_sets_waiting() {
         let mut conv = Conversation::new();
         conv.start_response();
-        // waiting 是私有的，通过 render 输出判断
-        let text = conv.render();
-        let lines: Vec<_> = text.lines.collect();
-        assert!(lines.last().unwrap().to_string().contains("thinking"));
+        // tests 模块和 Conversation 在同一个文件里，可以直接做白盒断言。
+        assert!(conv.waiting);
     }
 
     #[test]
@@ -649,6 +647,8 @@ mod tests {
     }
 }
 ```
+
+> 注意：`waiting` 字段仍然不是 `pub`。这里能访问它，是因为 `#[cfg(test)] mod tests` 写在 `conversation.rs` 同一个文件里，属于当前模块的子模块，可以访问父模块的私有字段。如果把测试放到 `tests/` 目录做集成测试，就不能直接读 `conv.waiting`，需要改用 `render()` 或公开方法来观察行为。
 
 ---
 

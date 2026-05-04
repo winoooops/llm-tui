@@ -4,7 +4,7 @@ use crate::{message::Message, utils};
 
 pub struct Conversation {
     display: Vec<String>,
-    conversation: Vec<Message>,
+    messages: Vec<Message>,
     current_response: String,
     waiting: bool,
     tick: u8,
@@ -14,7 +14,7 @@ impl Conversation {
     pub fn new() -> Self {
         Self {
             display: Vec::new(),
-            conversation: Vec::new(),
+            messages: Vec::new(),
             current_response: String::new(),
             waiting: false,
             tick: 0,
@@ -24,7 +24,7 @@ impl Conversation {
     pub fn push_user(&mut self, text: &str) -> Message {
         self.display.push(format!("You: {}", text));
         let msg = Message::user(text);
-        self.conversation.push(msg.clone());
+        self.messages.push(msg.clone());
         msg
     }
 
@@ -37,7 +37,7 @@ impl Conversation {
     }
 
     pub fn messages(&self) -> &[Message] {
-        &self.conversation
+        &self.messages
     }
 
     pub fn append_chunk(&mut self, chunk: &str) {
@@ -55,7 +55,7 @@ impl Conversation {
 
     pub fn finish_response(&mut self) {
         if !self.current_response.is_empty() {
-            self.conversation
+            self.messages
                 .push(Message::assistant(&self.current_response));
             self.current_response.clear();
         }
@@ -72,5 +72,62 @@ impl Conversation {
         }
 
         Text::from(lines)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use pretty_assertions::assert_eq;
+
+    #[test]
+    fn new_conversation_is_empty() {
+        let conversation = Conversation::new();
+        assert!(conversation.messages().is_empty());
+    }
+
+    #[test]
+    fn push_user_adds_message() {
+        let mut conversation = Conversation::new();
+        conversation.push_user("hello");
+        assert_eq!(conversation.messages().len(), 1);
+        assert_eq!(conversation.messages()[0].role, "user");
+        assert_eq!(conversation.messages()[0].content, "hello");
+    }
+
+    #[test]
+    fn start_response_sets_waiting() {
+        let mut conversation = Conversation::new();
+        conversation.start_response();
+        assert_eq!(conversation.waiting, true);
+    }
+
+    #[test]
+    fn append_chunk_stop_waiting_and_create_line() {
+        let mut conversation = Conversation::new();
+        conversation.start_response();
+        conversation.append_chunk("hi");
+        assert_eq!(conversation.waiting, false);
+        let text = conversation.render();
+        assert!(text.to_string().contains("AI: hi"))
+    }
+
+    #[test]
+    fn append_chunk_appends_to_existing_ai_line() {
+        let mut conversation = Conversation::new();
+        conversation.append_chunk("hello");
+        assert!(conversation.render().to_string().contains("AI: hello"));
+        conversation.append_chunk(" world");
+        assert!(conversation.render().to_string().contains("AI: hello world"));
+    }
+
+    #[test]
+    fn finish_response_moves_to_conversation() {
+        let mut conversation = Conversation::new();
+        conversation.append_chunk("hello back");
+        conversation.finish_response();
+        assert_eq!(conversation.messages().len(), 1);
+        assert_eq!(conversation.messages()[0].role, "assistant");
+        assert_eq!(conversation.messages()[0].content, "hello back");
     }
 }
