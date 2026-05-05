@@ -67,11 +67,11 @@ impl PromptContext {
             - Project: {}\n\
             - Project Type: {}\n\
             ",
-            &self.cwd, &self.project_name, &self.project_type
+            self.cwd, self.project_name, self.project_type
         );
 
         if !&self.project_summary.is_empty() {
-            dynamic.push_str(&format!("\n# Project Summary\n{}\n", &self.project_summary));
+            dynamic.push_str(&format!("\n# Project Summary\n{}\n", self.project_summary));
         }
 
         if let Some(agents) = &self.agents_md {
