@@ -1,4 +1,4 @@
-use crate::{action::Action, message::Message};
+use crate::{action::Action, message::Message, model_config::ModelConfig};
 use futures::StreamExt;
 use tokio::sync::mpsc::UnboundedSender;
 
@@ -6,6 +6,7 @@ const LLM_API_URL: &str = "http://127.0.0.1:8080/v1/chat/completions";
 
 pub async fn stream_chat(
     system: &Message,
+    model_config: &ModelConfig,
     messages: &[Message],
     tx: UnboundedSender<Action>,
 ) -> color_eyre::Result<()> {
@@ -15,7 +16,7 @@ pub async fn stream_chat(
     api_messages.extend(messages.iter());
 
     let body = serde_json::json!({
-        "model": "gemma-4-31b",
+        "model": model_config.api_model_name(),
         "messages": api_messages,
         "stream": true
     });
@@ -68,7 +69,7 @@ fn parse_sse_event(line: &str) -> SseEvent {
     };
 
     if data == "[DONE]" {
-        return SseEvent::Done
+        return SseEvent::Done;
     }
 
     match serde_json::from_str::<serde_json::Value>(data) {

@@ -12,6 +12,7 @@ mod errors;
 mod llm;
 mod logging;
 mod message;
+mod model_config;
 mod prompt;
 mod tui;
 mod utils;

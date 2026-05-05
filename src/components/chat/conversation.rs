@@ -118,7 +118,12 @@ mod tests {
         conversation.append_chunk("hello");
         assert!(conversation.render().to_string().contains("AI: hello"));
         conversation.append_chunk(" world");
-        assert!(conversation.render().to_string().contains("AI: hello world"));
+        assert!(
+            conversation
+                .render()
+                .to_string()
+                .contains("AI: hello world")
+        );
     }
 
     #[test]

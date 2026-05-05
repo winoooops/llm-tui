@@ -6,6 +6,7 @@ use tracing::{debug, info};
 
 use crate::llm;
 use crate::message::Message;
+use crate::model_config::ModelConfig;
 use crate::prompt::PromptContext;
 use crate::{
     action::Action,
@@ -26,6 +27,7 @@ pub struct App {
     action_tx: mpsc::UnboundedSender<Action>,
     action_rx: mpsc::UnboundedReceiver<Action>,
     system_prompt: Message,
+    model_config: ModelConfig,
 }
 
 #[derive(Default, Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -38,6 +40,8 @@ impl App {
     pub fn new(tick_rate: f64, frame_rate: f64) -> color_eyre::Result<Self> {
         let (action_tx, action_rx) = mpsc::unbounded_channel();
         let system_prompt = PromptContext::from_environment().system_prompt();
+        let config = Config::new()?;
+        let model_config = config.model;
         Ok(Self {
             tick_rate,
             frame_rate,
@@ -54,6 +58,7 @@ impl App {
             action_tx,
             action_rx,
             system_prompt,
+            model_config,
         })
     }
 
@@ -163,8 +168,10 @@ impl App {
                     let system = self.system_prompt.clone();
                     let history = history.clone();
                     let tx = self.action_tx.clone();
+                    let model_config = self.model_config.clone();
                     tokio::spawn(async move {
-                        if let Err(e) = llm::stream_chat(&system, &history, tx).await {
+                        if let Err(e) = llm::stream_chat(&system, &model_config, &history, tx).await
+                        {
                             tracing::error!("LLM error: {}", e);
                         }
                     });

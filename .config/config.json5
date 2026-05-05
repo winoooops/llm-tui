@@ -6,5 +6,17 @@
       "<Ctrl-c>": "Quit", // Yet another way to quit
       "<Ctrl-z>": "Suspend" // Suspend the application
     },
+  },
+  "model": {
+    "name": "gemma-4-31b",
+    "context_window": 65536,
+    "spec": {
+      "weights_file": "gemma-4-31B-it-Q4_K_M.gguf",
+      "quantization": "Q4_K_M",
+      "kv_cache_type": "q8_0",
+      "native_max_context": 262144,
+      "gpu_layers": 99
+    },
+    "stfuu": false
   }
 }

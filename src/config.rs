@@ -9,7 +9,7 @@ use ratatui::style::{Color, Modifier, Style};
 use serde::{Deserialize, de::Deserializer};
 use tracing::error;
 
-use crate::{action::Action, app::Mode};
+use crate::{action::Action, app::Mode, model_config::ModelConfig};
 
 const CONFIG: &str = include_str!("../.config/config.json5");
 
@@ -29,6 +29,8 @@ pub struct Config {
     pub keybindings: KeyBindings,
     #[serde(default)]
     pub styles: Styles,
+    #[serde(default)]
+    pub model: ModelConfig,
 }
 
 lazy_static! {
