@@ -47,7 +47,7 @@ The `Chat` component (`src/components/chat/`) is split into `Input` and `Convers
 3. `llm::stream_chat` (`src/llm.rs`) POSTs to **`http://127.0.0.1:8080/v1/chat/completions`** (hardcoded), parses SSE, and emits `Action::ReceiveChunk(String)` per token, then `Action::StreamEnd`.
 4. `Chat` receives chunks via its `update()` and appends them to the in-progress assistant message.
 
-The model name is **hardcoded as `"gemma-4-31b"`** in `llm.rs`. Any OpenAI-compatible server (llama.cpp, Ollama, vLLM) on port 8080 should work, but the model string is sent verbatim — change it to match what your server serves.
+The model name comes from `config.json5`'s `model.name` field (default `"gemma-4-31b"`); see `src/model_config.rs` for the `ModelConfig` / `ModelSpec` shape. `App::new` reads it via `Config::new()` and passes a `&ModelConfig` into `llm::stream_chat`. Any OpenAI-compatible server (llama.cpp, Ollama, vLLM) on port 8080 should work — set `model.name` to match what your server serves.
 
 ### System prompt assembly
 
